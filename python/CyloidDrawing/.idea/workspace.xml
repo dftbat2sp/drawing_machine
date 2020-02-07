@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="8791fdfe-c946-4b26-a9c6-f441c8e9340d" name="Default Changelist" comment="" />
+    <list default="true" id="8791fdfe-c946-4b26-a9c6-f441c8e9340d" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/source/Rotor.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Rotor.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -32,8 +35,9 @@
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
-    <property name="settings.editor.selected.configurable" value="configurable.group.project" />
+    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -167,6 +171,10 @@
       <screen x="0" y="27" width="1600" height="1173" />
     </state>
     <state x="477" y="418" width="635" height="397" key="#com.intellij.fileTypes.FileTypeChooser/0.27.1600.1173@0.27.1600.1173" timestamp="1578844752173" />
+    <state x="579" y="371" key="FileChooserDialogImpl" timestamp="1581038774293">
+      <screen x="0" y="27" width="1600" height="1173" />
+    </state>
+    <state x="579" y="371" key="FileChooserDialogImpl/0.27.1600.1173@0.27.1600.1173" timestamp="1581038774293" />
     <state width="1576" height="297" key="GridCell.Tab.0.bottom" timestamp="1580693186781">
       <screen x="0" y="27" width="1600" height="1173" />
     </state>
@@ -191,10 +199,10 @@
     <state width="1576" height="297" key="GridCell.Tab.0.right/0.27.1600.1173@0.27.1600.1173" timestamp="1580693186781" />
     <state width="2176" height="394" key="GridCell.Tab.0.right/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.right/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state x="404" y="267" width="1052" height="737" key="SettingsEditor" timestamp="1580693165709">
+    <state x="404" y="267" width="1052" height="737" key="SettingsEditor" timestamp="1581039190986">
       <screen x="0" y="27" width="1600" height="1173" />
     </state>
-    <state x="404" y="267" width="1052" height="737" key="SettingsEditor/0.27.1600.1173@0.27.1600.1173" timestamp="1580693165709" />
+    <state x="404" y="267" width="1052" height="737" key="SettingsEditor/0.27.1600.1173@0.27.1600.1173" timestamp="1581039190986" />
     <state x="916" y="560" key="com.intellij.ide.util.TipDialog" timestamp="1578342347804">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
