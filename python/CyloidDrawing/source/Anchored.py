@@ -1,4 +1,4 @@
 class Anchored:
 
-    def get_child_anchor(self):
+    def get_step(self, step: int):
         raise NotImplementedError

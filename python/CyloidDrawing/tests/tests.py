@@ -160,7 +160,7 @@ for num in range(count):
 
 print(time()%3600)
 """
-
+"""
 import numpy as np
 
 class svec:
@@ -173,9 +173,19 @@ class svec:
         if deg:
             theta = np.radians(theta)
 
+"""
+"""
+import shapely.geometry as sg
+import shapely.affinity as sa
+import numpy as np
 
+p = sg.Point(1,1)
+# p = p + p
+p2 = sa.rotate(p, 0, origin=sg.Point(1,1))
 
-
+print(p.coords)
+print(p2)
+"""
 
 
 

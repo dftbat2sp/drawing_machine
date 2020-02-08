@@ -12,7 +12,7 @@ class Circle(Object):
 
     def get_child_anchor(self):
         # calculate parent anchor
-        self.parent_anchor.get_child_anchor()
+        self.parent_anchor.get_step()
 
         # calculate child anchor from parent anchor plus angle change
         self.child_anchor = self.new_point_from_angle_and_length(self.parent_anchor, self.angle, self.radius)

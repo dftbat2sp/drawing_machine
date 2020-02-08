@@ -11,5 +11,5 @@ class Pen:
         self.parent_anchor: Type[Object] = pa
 
     def get_next_dot(self):
-        self.dots.append(self.parent_anchor.get_child_anchor())
+        self.dots.append(self.parent_anchor.get_step())
     
