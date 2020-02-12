@@ -12,7 +12,7 @@ class Point(Anchored):
         return self
 
 
-def rotate_point(point: Point, angle, origin: Point = Point(0, 0)):
+def rotate_point(point: Point, angle, parent: Point = Point(0, 0)):
 
-    return Point(((point.x * cos(angle)) - (point.y * sin(angle))) + origin.x,
-                 ((point.y * cos(angle)) + (point.x * sin(angle))) + origin.y)
+    return Point(((point.x * cos(angle)) - (point.y * sin(angle))) + parent.x,
+                 ((point.y * cos(angle)) + (point.x * sin(angle))) + parent.y)

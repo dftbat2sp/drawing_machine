@@ -187,9 +187,16 @@ print(p.coords)
 print(p2)
 """
 
+from Point import *
+from numpy import pi
 
+p = Point(1,0)
+q = Point(-1,0)
+r = rotate_point(p, pi)
 
-
+print(rotate_point(p, pi/2, Point(1,1)))
+print(rotate_point(q, pi/2, Point(0,0)))
+print(r)
 
 
 

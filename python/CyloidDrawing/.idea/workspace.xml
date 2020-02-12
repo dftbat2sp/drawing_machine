@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8791fdfe-c946-4b26-a9c6-f441c8e9340d" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/CyloidDrawing.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/CyloidDrawing.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/Anchored.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Anchored.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/Circle.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Circle.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/source/Pen.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Pen.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/Point.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Point.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/Rotor.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Rotor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/tests.py" afterDir="false" />
@@ -43,6 +39,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="restartRequiresConfirmation" value="false" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PythonContentEntriesConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -114,19 +111,19 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="simple_anim" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="CycloidDrawing" />
+    <configuration name="cairoTest" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CyloidDrawing" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/tests" />
       <option name="IS_MODULE_SDK" value="true" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/simple_anim.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/tests/cairoTest.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -159,8 +156,9 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.Rotor" />
-        <item itemvalue="Python.Point" />
+        <item itemvalue="Python.cairoTest" />
         <item itemvalue="Python.tests" />
+        <item itemvalue="Python.Point" />
         <item itemvalue="Python.SimpleVector" />
       </list>
     </recent_temporary>
@@ -212,34 +210,34 @@
     </state>
     <state x="579" y="371" key="FileChooserDialogImpl/0.27.1600.1173@0.27.1600.1173" timestamp="1581038774293" />
     <state x="1245" y="441" width="555" height="520" key="FileChooserDialogImpl/0.27.3440.1413@0.27.3440.1413" timestamp="1581184229735" />
-    <state width="1672" height="372" key="GridCell.Tab.0.bottom" timestamp="1581193784995">
+    <state width="2585" height="446" key="GridCell.Tab.0.bottom" timestamp="1581522471302">
       <screen x="0" y="27" width="3440" height="1413" />
     </state>
-    <state width="1576" height="297" key="GridCell.Tab.0.bottom/0.27.1600.1173@0.27.1600.1173" timestamp="1580693186781" />
+    <state width="1189" height="446" key="GridCell.Tab.0.bottom/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.bottom/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.bottom/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="1672" height="372" key="GridCell.Tab.0.bottom/0.27.3440.1413@0.27.3440.1413" timestamp="1581193784995" />
-    <state width="1672" height="372" key="GridCell.Tab.0.center" timestamp="1581193784995">
+    <state width="2585" height="446" key="GridCell.Tab.0.bottom/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
+    <state width="2585" height="446" key="GridCell.Tab.0.center" timestamp="1581522471302">
       <screen x="0" y="27" width="3440" height="1413" />
     </state>
-    <state width="1576" height="297" key="GridCell.Tab.0.center/0.27.1600.1173@0.27.1600.1173" timestamp="1580693186781" />
+    <state width="1189" height="446" key="GridCell.Tab.0.center/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.center/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.center/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="1672" height="372" key="GridCell.Tab.0.center/0.27.3440.1413@0.27.3440.1413" timestamp="1581193784995" />
-    <state width="1672" height="372" key="GridCell.Tab.0.left" timestamp="1581193784995">
+    <state width="2585" height="446" key="GridCell.Tab.0.center/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
+    <state width="2585" height="446" key="GridCell.Tab.0.left" timestamp="1581522471301">
       <screen x="0" y="27" width="3440" height="1413" />
     </state>
-    <state width="1576" height="297" key="GridCell.Tab.0.left/0.27.1600.1173@0.27.1600.1173" timestamp="1580693186781" />
+    <state width="1189" height="446" key="GridCell.Tab.0.left/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.left/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898314" />
     <state width="2176" height="412" key="GridCell.Tab.0.left/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491650" />
-    <state width="1672" height="372" key="GridCell.Tab.0.left/0.27.3440.1413@0.27.3440.1413" timestamp="1581193784995" />
-    <state width="1672" height="372" key="GridCell.Tab.0.right" timestamp="1581193784995">
+    <state width="2585" height="446" key="GridCell.Tab.0.left/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471301" />
+    <state width="2585" height="446" key="GridCell.Tab.0.right" timestamp="1581522471302">
       <screen x="0" y="27" width="3440" height="1413" />
     </state>
-    <state width="1576" height="297" key="GridCell.Tab.0.right/0.27.1600.1173@0.27.1600.1173" timestamp="1580693186781" />
+    <state width="1189" height="446" key="GridCell.Tab.0.right/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.right/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.right/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="1672" height="372" key="GridCell.Tab.0.right/0.27.3440.1413@0.27.3440.1413" timestamp="1581193784995" />
+    <state width="2585" height="446" key="GridCell.Tab.0.right/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
     <state x="869" y="316" width="1052" height="737" key="SettingsEditor" timestamp="1581192533008">
       <screen x="0" y="27" width="3440" height="1413" />
     </state>
