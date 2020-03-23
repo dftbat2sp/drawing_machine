@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-from Angle_Type import Angle_Type
 from numpy import pi
 from math import radians
-from Misc import sigfig
+from tests.Archive.Misc import sigfig
 
 
 @dataclass

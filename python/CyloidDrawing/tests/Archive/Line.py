@@ -1,4 +1,4 @@
-from Object import Object
+from tests.Archive.Object import Object
 
 class Line(Object):
     def __init__(self, pa):

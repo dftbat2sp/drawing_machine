@@ -1,6 +1,6 @@
-from Point import Point
-from Anchored import Anchored
-from Angle import Angle
+from tests.Archive.Point import Point
+from tests.Archive.Anchored import Anchored
+from tests.Archive.Angle import Angle
 import numpy as np
 
 class Object(Anchored):

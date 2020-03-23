@@ -1,13 +1,8 @@
-from abc import ABC
-
 # from sympy import Rational, rad, Point2D
 import matplotlib.pyplot as pyplt
 
 import numpy as np
-from Point import Point, rotate_point
-
-from dataclasses import dataclass
-from typing import Union
+from tests.Archive.Point import Point, rotate_point
 
 
 class Rotor:
@@ -26,6 +21,18 @@ class Rotor:
 
         # universal
         self.resolution = resolution
+# c2_points = [c2.get_point(i) for i in time_step_list]
+# c2_x = [i.real for i in c2_points]
+# c2_y = [i.imag for i in c2_points]
+#
+# fig, ax = pyplot.subplots()
+# ax.set_aspect('equal')
+#
+# ax.plot(c2_x, c2_y)
+#
+# pyplot.show()
+#
+# # c1_points =
 
         self.starting_point = rotate_point(Point(length, 0), angle)
 

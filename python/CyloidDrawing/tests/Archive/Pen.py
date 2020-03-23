@@ -1,6 +1,6 @@
-from Point import Point
+from tests.Archive.Point import Point
 from typing import Type, List
-from Object import Object
+from tests.Archive.Object import Object
 from
 
 class Pen:

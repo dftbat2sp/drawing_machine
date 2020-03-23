@@ -186,7 +186,7 @@ p2 = sa.rotate(p, 0, origin=sg.Point(1,1))
 print(p.coords)
 print(p2)
 """
-
+"""
 from Point import *
 from numpy import pi
 
@@ -197,7 +197,19 @@ r = rotate_point(p, pi)
 print(rotate_point(p, pi/2, Point(1,1)))
 print(rotate_point(q, pi/2, Point(0,0)))
 print(r)
+"""
 
+import cmath
+from cmath import exp, pi
+
+p1 = 1 + 1j
+p2 = 4 + 5j
+
+angle = p2 - p1
+
+ang2 = 5 * exp(0.9272952180016122 * 1j1)
+
+print(ang2)
 
 
 

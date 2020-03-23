@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from Anchored import Anchored
+from tests.Archive.Anchored import Anchored
 from numpy import cos, sin
 
 
@@ -16,3 +16,14 @@ def rotate_point(point: Point, angle, parent: Point = Point(0, 0)):
 
     return Point(((point.x * cos(angle)) - (point.y * sin(angle))) + parent.x,
                  ((point.y * cos(angle)) + (point.x * sin(angle))) + parent.y)
+
+class Point2(Anchored):
+
+    def __init__(self, x, y):
+        _point = x + y*1j
+
+    def get_x(self):
+        return self._point.real
+
+    def get_y(self):
+        return self._point.imag
