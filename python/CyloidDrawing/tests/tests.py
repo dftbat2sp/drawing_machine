@@ -198,7 +198,7 @@ print(rotate_point(p, pi/2, Point(1,1)))
 print(rotate_point(q, pi/2, Point(0,0)))
 print(r)
 """
-
+"""
 import cmath
 from cmath import exp, pi
 
@@ -210,13 +210,69 @@ angle = p2 - p1
 ang2 = 5 * exp(0.9272952180016122 * 1j1)
 
 print(ang2)
+"""
+"""
+class IntersectionError(Exception):
+    pass
 
+import math
 
+def get_intersections(x0, y0, r0, x1, y1, r1):
+    # circle 1: (x0, y0), radius r0
+    # circle 2: (x1, y1), radius r1
 
+    d=math.sqrt((x1-x0)**2 + (y1-y0)**2)
 
+    # non intersecting
+    if d > r0 + r1 :
+        raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
+    # One circle within other
+    if d < abs(r0-r1):
+        raise IntersectionError(f'Non-intersecting circles. One contained in the other.')
+    # coincident circles
+    if d == 0:
+        raise IntersectionError(f'Concentric circles.')
+    else:
+        # to ensure a bias to top and right
+        if x0 < x1:
+            x0, x1 = x1, x0
+            r0, r1 = r1, r0
+        if y0 > y1:
+            y0, y1 = y1, y0
+            r0, r1 = r1, r0
 
+        a=(r0**2-r1**2+d**2)/(2*d)
+        h=math.sqrt(r0**2-a**2)
+        x2=x0+a*(x1-x0)/d
+        y2=y0+a*(y1-y0)/d
+        x3=x2+h*(y1-y0)/d
+        y3=y2-h*(x1-x0)/d
 
+        return x3 + y3 * 1j
 
+cmplx = get_intersections(0, -5, 10, 0, 5, 10) # vertical points, + / -, right bias
+print(f'first intersection:  {cmplx}')
+cmplx = get_intersections(0, 5, 10, 0, -5, 10) # vertical points, -/+, left bias
+print(f'first intersection:  {cmplx}')
+cmplx = get_intersections(-5, 0, 10, 5, 0, 10) # horizontal points, -/+ bottom bias
+print(f'first intersection:  {cmplx}')
+cmplx = get_intersections(5, 0, 10, -5, 0, 10) # horizontal points, +/- top bias
+print(f'first intersection:  {cmplx}')
+cmplx = get_intersections(5, 5, 10, -5, -5, 10) # horizontal points, +/- top bias
+print(f'first intersection:  {cmplx}')
+cmplx = get_intersections(3, -5, 4, -3, -5, 4) # horizontal points, +/- top bias
+print(f'first intersection:  {cmplx}')
 
+# x1 > x2 = top bias
+# y1 > y2 = left bias
 
+# want x0 > x1
+# want y1 > y0
 
+"""
+from typing import Type, Tuple
+mate1 = 2 + 2j
+mate2 = 3 - 3j, 3.2437
+
+print(isinstance(mate2, tuple))
+print(len(mate1))
