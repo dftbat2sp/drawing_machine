@@ -3,6 +3,7 @@ from cmath import exp, phase
 from typing import Type, Union
 
 import matplotlib.pyplot as pyplot
+import matplotlib.animation as mpl_animation
 
 
 class IntersectionError(Exception):
@@ -47,6 +48,17 @@ class Anchorable:
 
     def get_point(self, time_step: float) -> complex:
         raise NotImplementedError
+
+
+class PointList:
+
+    def __init__(self, anchorable_object: Type[Anchorable], resolution: float, number_of_rotations: float):
+        self.object = anchorable_object
+        self.number_of_points = int(number_of_rotations / resolution)
+        self.rotation_step_list = [resolution * i for i in range(self.number_of_points)]
+
+    def get_points_list(self):
+        return [self.object.get_point(i) for i in self.rotation_step_list]
 
 
 class Anchor(Anchorable):
@@ -118,18 +130,20 @@ class Bar(Anchorable):
         return parent + (self.length * exp(angle * 1j))
 
 
-class Drawer:
+class Drawer(PointList):
 
     def __init__(self, draw_object, resolution: float, number_of_rotations: float):
-        self.object = draw_object
-        self.number_points = int(number_of_rotations / resolution)
-        self.point_step_list = [resolution * i for i in range(self.number_points)]
+        super().__init__(draw_object, resolution, number_of_rotations)
+        # self.object = draw_object
+        # self.number_of_points = int(number_of_rotations / resolution)
+        # self.rotation_step_list = [resolution * i for i in range(self.number_of_points)]
 
         self.ax = pyplot.subplot()
         self.ax.set_aspect('equal')
 
     def plot(self):
-        points_list = [self.object.get_point(i) for i in self.point_step_list]
+        # points_list = [self.object.get_point(i) for i in self.rotation_step_list]
+        points_list = self.get_points_list()
         x_list = [i.real for i in points_list]
         y_list = [i.imag for i in points_list]
 
@@ -137,28 +151,66 @@ class Drawer:
         pyplot.plot(x_list, y_list)
 
 
-anchor1 = Anchor(2 + 2j)
+anchor1 = Anchor(5 + 5j)
 # anchor1 = Anchor(0)
 anchor2 = Anchor(-2 - 2j)
 
-c1 = Circle(1.0, pi/4, parent_object=anchor1)
+c1 = Circle(pi/2, pi / 4, parent_object=anchor1)
 c2 = Circle(1.0, 1.0, parent_object=anchor2)
 b1 = Bar(c2, c1, 3)
 # b1 = Bar(anchor1, c1, 1.5)
 
 res = 0.001
-rotations = 20.0
+rot = 20.0
 
+# Animation
+b2 = PointList(b1, res, rot)
+b2_points = b2.get_points_list()
+x = [i.real for i in b2_points]
+y = [i.imag for i in b2_points]
+
+fig = pyplot.figure()
+ax = pyplot.axes(xlim=(-5, 5), ylim=(-5, 5))
+ax.set_aspect('equal')
+
+line, = ax.plot([], [])
+
+
+def init():  # only required for blitting to give a clean slate.
+    # line.set_ydata([np.nan] * len(x))
+    line.set_data([], [])
+    return line,
+    # return matplotlib.lines.Line2D(np.cos(x[:1]), np.sin(x[:1])),
+
+
+def animate(i):
+    # y = np.arange(0 + (i/np.pi), (2 * np.pi) - 0.5 + (i/np.pi), 0.01)
+    # line.set_ydata(np.sin(y))  # update the data.
+    # line.set_xdata(np.cos(y))
+    # line2, = ax.plot(np.cos(x[:i]), np.sin(x[:i]))
+    i = i * 4
+    line.set_data(x[:i], y[:i])
+    return line,
+
+
+ani = mpl_animation.FuncAnimation(fig, animate, init_func=init, interval=1, blit=True, save_count=50)
+
+pen_c1 = Drawer(c1, res, rot)
+pen_c2 = Drawer(c2, res, rot)
+
+pen_c1.plot()
+pen_c2.plot()
+
+pyplot.show()
+"""
+# Drawers
 pen_b1 = Drawer(b1, res, rotations)
 pen_c1 = Drawer(c1, res, rotations)
 pen_c2 = Drawer(c2, res, rotations)
-# pen_a1 = Drawer(anchor1, res, rotations)
-# pen_a2 = Drawer(anchor2, res, rotations)
 
 pen_b1.plot()
 pen_c1.plot()
 pen_c2.plot()
-# pen_a1.plot()
-# pen_a2.plot()
 
 pyplot.show()
+"""
