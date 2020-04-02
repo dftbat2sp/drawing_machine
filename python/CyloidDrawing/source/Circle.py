@@ -60,6 +60,13 @@ class PointList:
     def get_points_list(self):
         return [self.object.get_point(i) for i in self.rotation_step_list]
 
+class BarMateSlide:
+    pass
+
+class BarMateFix:
+
+    def get_data_for_circle_intersections(self, time_step: float) -> tuple:
+        raise NotImplementedError
 
 class Anchor(Anchorable):
 
@@ -70,7 +77,7 @@ class Anchor(Anchorable):
         return self.point
 
 
-class Circle(Anchorable):
+class Circle(Anchorable, BarMateSlide):
     exp_const = tau * 1j
 
     def __init__(self, length: float, freq: float, angle: float = 0, deg: bool = False,
@@ -101,35 +108,191 @@ class Circle(Anchorable):
         return f'length: {self.length}, freq: {self.rotation_speed}, angle: {self.starting_angle}'
 
 
-class Bar(Anchorable):
+class Bar(Anchorable, BarMateFix):
 
-    def __init__(self, parent_object, mate_object, child_length_from_parent):
-        self.parent_object = parent_object
-        self.mate_object = mate_object
-        self.length = child_length_from_parent
+    def __init__(self, parent_object, child_length_from_parent, mate_object,  mate_length_from_parent):
+        self.parent_object: Type[Anchorable] = parent_object
+        self.mate_object: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
+        self.child_length = child_length_from_parent
+        self.mate_length = mate_length_from_parent
 
-    def get_point(self, time_step: float, other_is_bar: bool = False):
+    def get_point(self, time_step: float):
         parent = self.parent_object.get_point(time_step)
-        if other_is_bar:
-            return parent, self.length,
-        else:
-            mate = self.mate_object.get_point(time_step, True)
 
-        if isinstance(mate, tuple):
-            mate_parent = mate[0]
-            mate_length = mate[1]
+        if isinstance(self.mate_object, BarMateFix):
+            mate_parent, mate_length = self.mate_object.get_data_for_circle_intersections(time_step)
 
-            mate_point = get_circles_intersections(parent.real, parent.imag, self.length,
+            mate = get_circles_intersections(parent.real, parent.imag, self.mate_length,
                                                    mate_parent.real, mate_parent.imag, mate_length)
-        elif isinstance(mate, complex):
-            mate_point = mate
+        elif isinstance(self.mate_object, BarMateSlide):
+            mate = self.mate_object.get_point(time_step)
 
-        mate_parent_diff = mate_point - parent
+        mate_parent_diff = mate - parent
         angle = phase(mate_parent_diff)
 
-        return parent + (self.length * exp(angle * 1j))
+        return parent + (self.child_length * exp(angle * 1j))
+
+    def get_data_for_circle_intersections(self, time_step: float) -> tuple:
+        parent_point = self.parent_object.get_point(time_step)
+        return parent_point, self.mate_length
 
 
+class Draw:
+
+    def __init__(self, draw_obj, resolution, num_of_rotations, *supporting_objs):
+
+        self.draw_obj = draw_obj
+        self.supporting_obj = supporting_objs
+
+        self.resolution = resolution
+        self.num_of_rotations = num_of_rotations
+
+
+
+
+
+anchor1 = Anchor(3 + 0j)
+# anchor1 = Anchor(0)
+anchor2 = Anchor(-3 - 0j)
+
+c1 = Circle(1.5, .7, parent_object=anchor1)
+c2 = Circle(0.8, .5, parent_object=anchor2)
+bar2 = Bar(c1, 8, None, 6)
+b1 = Bar(c2, 9, bar2, 7)
+bar2.mate_object = b1
+# b1 = Bar(anchor1, c1, 1.5)
+
+res = 0.001
+rot = 10.0
+
+
+# Draw(main_obj, *everything_else)
+
+# circles -> draw child point
+# bars -> draw parent to child, dot on mate
+
+
+
+
+
+
+
+
+
+
+
+# Animation
+b2 = PointList(b1, res, rot)
+b2_points = b2.get_points_list()
+x = [i.real for i in b2_points]
+y = [i.imag for i in b2_points]
+z = [x,y]
+min_x = min(x)
+max_x = max(x)
+width_x = max_x - min_x
+
+min_y = min(y)
+max_y = max(y)
+width_y = max_y - min_y
+
+extra_width = 7
+
+fig = pyplot.figure(figsize=(width_x * 3, width_y * 3))
+ax = pyplot.axes(xlim=(min_x - extra_width, max_x + extra_width), ylim=(min_y - extra_width, max_y + extra_width))
+ax.set_aspect('equal')
+
+line, = ax.plot([], [])
+mark, = ax.plot([], [], marker='o', markersize=3, color='r')
+
+b3 = PointList(c1, res, rot)
+b4 = PointList(c2, res, rot)
+
+c1_points = b3.get_points_list()
+c2_points = b4.get_points_list()
+
+c1_x = [i.real for i in c1_points]
+c1_y = [i.imag for i in c1_points]
+
+c2_x = [i.real for i in c2_points]
+c2_y = [i.imag for i in c2_points]
+
+c1_line, = ax.plot([], [])
+c1_mark, = ax.plot([], [], marker='o', markersize=3, color='b')
+c2_line, = ax.plot([], [])
+c2_mark, = ax.plot([], [], marker='o', markersize=3, color='g')
+
+myline, = ax.plot([], [])
+
+
+# pen_c1.plot()
+# pen_c2.plot()
+
+def init():  # only required for blitting to give a clean slate.
+    # line.set_ydata([np.nan] * len(x))
+    return pyplot.axes().plot([], [])
+    # line.set_data([], [])
+    # mark.set_data([], [])
+    # c1_line.set_data([], [])
+    # c1_mark.set_data([], [])
+    # c2_line.set_data([], [])
+    # c2_mark.set_data([], [])
+    #
+    # myline.set_data([], [])
+    # return line, mark, c1_line, c1_mark, c2_line, c2_mark, myline
+    # return line,
+    # return matplotlib.lines.Line2D(np.cos(x[:1]), np.sin(x[:1])),
+
+
+def get_frames():
+    for i in range(len(x)):
+        point = i * 20
+        if point < len(x):
+            yield point
+
+
+def animate(i):
+    # y = np.arange(0 + (i/np.pi), (2 * np.pi) - 0.5 + (i/np.pi), 0.01)
+    # line.set_ydata(np.sin(y))  # update the data.
+    # line.set_xdata(np.cos(y))
+    # line2, = ax.plot(np.cos(x[:i]), np.sin(x[:i]))
+
+    # i = i * 50
+
+
+
+    line.set_data(z[0][:i], z[1][:i])
+    mark.set_data(z[0][i], z[1][i])
+
+    # c1_line.set_data(c1_x[:i], c1_y[:i])
+    # c1_mark.set_data(c1_x[i], c1_y[i])
+    # c2_line.set_data(c2_x[:i], c2_y[:i])
+    # c2_mark.set_data(c2_x[i], c2_y[i])
+    #
+    # myline.set_data([c2_x[i], x[i]], [c2_y[i], y[i]])
+
+
+
+    return line, mark, #c1_line, c1_mark, c2_line, c2_mark, myline
+
+
+ani = mpl_animation.FuncAnimation(fig, animate, init_func=init, interval=1, blit=True, save_count=1, frames=get_frames,
+                                  repeat=False,)
+
+pyplot.show()
+"""
+# Drawers
+pen_b1 = Drawer(b1, res, rotations)
+pen_c1 = Drawer(c1, res, rotations)
+pen_c2 = Drawer(c2, res, rotations)
+
+pen_b1.plot()
+pen_c1.plot()
+pen_c2.plot()
+
+pyplot.show()
+"""
+
+"""
 class Drawer(PointList):
 
     def __init__(self, draw_object, resolution: float, number_of_rotations: float):
@@ -149,68 +312,4 @@ class Drawer(PointList):
 
         # self.ax.plot(x_list, y_list)
         pyplot.plot(x_list, y_list)
-
-
-anchor1 = Anchor(5 + 5j)
-# anchor1 = Anchor(0)
-anchor2 = Anchor(-2 - 2j)
-
-c1 = Circle(pi/2, pi / 4, parent_object=anchor1)
-c2 = Circle(1.0, 1.0, parent_object=anchor2)
-b1 = Bar(c2, c1, 3)
-# b1 = Bar(anchor1, c1, 1.5)
-
-res = 0.001
-rot = 20.0
-
-# Animation
-b2 = PointList(b1, res, rot)
-b2_points = b2.get_points_list()
-x = [i.real for i in b2_points]
-y = [i.imag for i in b2_points]
-
-fig = pyplot.figure()
-ax = pyplot.axes(xlim=(-5, 5), ylim=(-5, 5))
-ax.set_aspect('equal')
-
-line, = ax.plot([], [])
-
-
-def init():  # only required for blitting to give a clean slate.
-    # line.set_ydata([np.nan] * len(x))
-    line.set_data([], [])
-    return line,
-    # return matplotlib.lines.Line2D(np.cos(x[:1]), np.sin(x[:1])),
-
-
-def animate(i):
-    # y = np.arange(0 + (i/np.pi), (2 * np.pi) - 0.5 + (i/np.pi), 0.01)
-    # line.set_ydata(np.sin(y))  # update the data.
-    # line.set_xdata(np.cos(y))
-    # line2, = ax.plot(np.cos(x[:i]), np.sin(x[:i]))
-    i = i * 4
-    line.set_data(x[:i], y[:i])
-    return line,
-
-
-ani = mpl_animation.FuncAnimation(fig, animate, init_func=init, interval=1, blit=True, save_count=50)
-
-pen_c1 = Drawer(c1, res, rot)
-pen_c2 = Drawer(c2, res, rot)
-
-pen_c1.plot()
-pen_c2.plot()
-
-pyplot.show()
-"""
-# Drawers
-pen_b1 = Drawer(b1, res, rotations)
-pen_c1 = Drawer(c1, res, rotations)
-pen_c2 = Drawer(c2, res, rotations)
-
-pen_b1.plot()
-pen_c1.plot()
-pen_c2.plot()
-
-pyplot.show()
 """
