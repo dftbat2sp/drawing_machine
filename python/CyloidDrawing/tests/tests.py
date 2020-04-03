@@ -270,9 +270,37 @@ print(f'first intersection:  {cmplx}')
 # want y1 > y0
 
 """
+"""
 from typing import Type, Tuple
 mate1 = 2 + 2j
 mate2 = 3 - 3j, 3.2437
 
 print(isinstance(mate2, tuple))
 print(len(mate1))
+"""
+
+import numpy as np
+
+resolution = 0.0001
+num_of_rotations = 4000
+rotations_radians = num_of_rotations * np.pi * 2
+# TODO
+num_of_points = int(np.ceil(num_of_rotations / resolution))
+
+point_list = np.linspace(1, rotations_radians, num_of_points, dtype=float)
+
+exp_const = 2 * np.pi * 1j
+rotn_speed = 2
+length = 5
+start_angle = 0
+length_start_angle_const = length * np.exp(start_angle * 1j)
+
+modified_points = length_start_angle_const * np.exp(exp_const * rotn_speed * point_list)
+
+print(f'num of points: {num_of_points} (len: {len(point_list)})')
+
+print(point_list[:12])
+print(modified_points[:12])
+
+import time
+time.sleep(10)

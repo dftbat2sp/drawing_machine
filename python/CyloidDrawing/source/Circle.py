@@ -1,6 +1,7 @@
 from math import radians, tau, pi, sqrt
 from cmath import exp, phase
 from typing import Type, Union
+import numpy as np
 
 import matplotlib.pyplot as pyplot
 import matplotlib.animation as mpl_animation
@@ -77,6 +78,9 @@ class Anchor(Anchorable):
         return self.point
 
 
+#TODO replace one at a time create of points to use numpy.arrays
+# see tests.pyg
+
 class Circle(Anchorable, BarMateSlide):
     exp_const = tau * 1j
 
@@ -98,11 +102,16 @@ class Circle(Anchorable, BarMateSlide):
 
         self.parent: Type[Anchorable] = parent_object
 
+
+
         super().__init__()
 
     def get_point(self, time_step: float, other_is_bar: bool = False) -> complex:
         return self.parent.get_point(time_step) + \
                self.length_starting_angle * exp(self.exp_const * self.rotation_speed * time_step)
+
+    def get_point_lists(self) -> tuple:
+        pass
 
     def __str__(self):
         return f'length: {self.length}, freq: {self.rotation_speed}, angle: {self.starting_angle}'
@@ -136,7 +145,7 @@ class Bar(Anchorable, BarMateFix):
         parent_point = self.parent_object.get_point(time_step)
         return parent_point, self.mate_length
 
-
+"""
 class Draw:
 
     def __init__(self, draw_obj, resolution, num_of_rotations, *supporting_objs):
@@ -147,7 +156,7 @@ class Draw:
         self.resolution = resolution
         self.num_of_rotations = num_of_rotations
 
-
+"""
 
 
 
@@ -165,7 +174,12 @@ bar2.mate_object = b1
 res = 0.001
 rot = 10.0
 
+n1 = [b1.get_point(i) for i in range(20000000)]
 
+
+print('Done')
+import time
+time.sleep(20)
 # Draw(main_obj, *everything_else)
 
 # circles -> draw child point
@@ -174,7 +188,7 @@ rot = 10.0
 
 
 
-
+"""
 
 
 
@@ -279,6 +293,8 @@ ani = mpl_animation.FuncAnimation(fig, animate, init_func=init, interval=1, blit
                                   repeat=False,)
 
 pyplot.show()
+"""
+
 """
 # Drawers
 pen_b1 = Drawer(b1, res, rotations)
