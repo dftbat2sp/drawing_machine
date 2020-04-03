@@ -282,7 +282,7 @@ print(len(mate1))
 import numpy as np
 
 resolution = 0.0001
-num_of_rotations = 4000
+num_of_rotations = 400
 rotations_radians = num_of_rotations * np.pi * 2
 # TODO
 num_of_points = int(np.ceil(num_of_rotations / resolution))
@@ -295,7 +295,7 @@ length = 5
 start_angle = 0
 length_start_angle_const = length * np.exp(start_angle * 1j)
 
-modified_points = length_start_angle_const * np.exp(exp_const * rotn_speed * point_list)
+modified_points = point_list + (length_start_angle_const * np.exp(exp_const * rotn_speed * point_list))
 
 print(f'num of points: {num_of_points} (len: {len(point_list)})')
 
