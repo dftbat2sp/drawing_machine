@@ -278,11 +278,11 @@ mate2 = 3 - 3j, 3.2437
 print(isinstance(mate2, tuple))
 print(len(mate1))
 """
-
+"""
 import numpy as np
 
 resolution = 0.0001
-num_of_rotations = 400
+num_of_rotations = 0.5
 rotations_radians = num_of_rotations * np.pi * 2
 # TODO
 num_of_points = int(np.ceil(num_of_rotations / resolution))
@@ -297,10 +297,97 @@ length_start_angle_const = length * np.exp(start_angle * 1j)
 
 modified_points = point_list + (length_start_angle_const * np.exp(exp_const * rotn_speed * point_list))
 
-print(f'num of points: {num_of_points} (len: {len(point_list)})')
+# unit_vector = pow(modified_points, 0) * (4 + 3j)
+unit_vector = np.full_like(modified_points, 4+3j)
 
-print(point_list[:12])
-print(modified_points[:12])
+none_list = None
+try:
+    none_plus_list = none_list + modified_points
+except TypeError:
+    none_list = np.full_like(modified_points, 1+1j)
+    none_plus_list = none_list + modified_points
 
-import time
-time.sleep(10)
+
+points1 = np.array([1+1j, 2+1j, 3+1j, 4+1j, 5+1j])
+points2 = np.array([7+1j, 8+1j, 9+1j, 11+1j, 11+1j])
+
+radius1 = 5
+radius2 = 5
+
+d = np.sqrt(np.power(points2.real - points1.real, 2) + np.power(points2.imag - points1.imag, 2))
+
+# WHAT!?!
+if (d > 6).any():
+    print("what")
+
+if (d < abs(10 - 3)).any():
+    print("huh?")
+
+if (d == 0).any():
+    print("ya")
+
+# print(f'num of points: {num_of_points} (len: {len(point_list)})')
+# print(point_list[:12])
+# print(modified_points[:12])
+# print(unit_vector[:12])
+
+print(points1)
+print(points2)
+print(d)
+"""
+
+from numpy import ndarray, sqrt, power
+
+class CircleMate:
+
+    def __init__(self, radius: float, centers: ndarray):
+        self.r: float = radius
+        self.c: ndarray[complex] = centers
+
+    def get_circles_intersections(self, other):
+        # circle 1: (x0, y0), radius r0
+        # circle 2: (x1, y1), radius r1
+
+        d = sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+
+        # non intersecting
+        if d > r0 + r1:
+            raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
+        # One circle within other
+        if d < abs(r0 - r1):
+            raise IntersectionError(f'Non-intersecting circles. One contained in the other.')
+        # coincident circles
+        if d == 0:
+            raise IntersectionError(f'Concentric circles.')
+        else:
+            # to ensure a bias to top and right
+            if x0 < x1:
+                x0, x1 = x1, x0
+                r0, r1 = r1, r0
+            if y0 > y1:
+                y0, y1 = y1, y0
+                r0, r1 = r1, r0
+
+            a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
+            h = sqrt(r0 ** 2 - a ** 2)
+            x2 = x0 + a * (x1 - x0) / d
+            y2 = y0 + a * (y1 - y0) / d
+            x3 = x2 + h * (y1 - y0) / d
+            y3 = y2 - h * (x1 - x0) / d
+
+            return x3 + y3 * 1j
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

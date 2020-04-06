@@ -1,6 +1,6 @@
 from math import radians, tau, pi, sqrt
 from cmath import exp, phase
-from typing import Type, Union
+from typing import Type, Union, Tuple
 import numpy as np
 
 import matplotlib.pyplot as pyplot
@@ -47,10 +47,24 @@ def get_circles_intersections(x0, y0, r0, x1, y1, r1):
 
 class Anchorable:
 
+    def __init__(self):
+        self.child_point_array: Type[np.ndarray, None] = None
+        self.list_calculated = False
+
+    """
     def get_point(self, time_step: float) -> complex:
+        raise NotImplementedError
+    """
+    """
+    def get_point_list(self, list_of_base_points: np.ndarray) -> Tuple[np.ndarray, ...]:
+        raise NotImplementedError
+    """
+
+    def create_point_lists(self, list_of_base_points: np.ndarray) -> None:
         raise NotImplementedError
 
 
+"""
 class PointList:
 
     def __init__(self, anchorable_object: Type[Anchorable], resolution: float, number_of_rotations: float):
@@ -60,25 +74,46 @@ class PointList:
 
     def get_points_list(self):
         return [self.object.get_point(i) for i in self.rotation_step_list]
+"""
+
 
 class BarMateSlide:
     pass
 
+
 class BarMateFix:
+
+    def __init__(self):
+        self.mate_point_array = None
 
     def get_data_for_circle_intersections(self, time_step: float) -> tuple:
         raise NotImplementedError
 
+
 class Anchor(Anchorable):
 
     def __init__(self, complex_number: complex):
+        super().__init__()
         self.point = complex_number
 
+    """
     def get_point(self, time_step: float, other_is_bar: bool = False) -> (complex, tuple):
         return self.point
+    """
+
+    """
+    def get_point_list(self, list_of_base_points: np.ndarray) -> Tuple[np.ndarray, ...]:
+        return np.full_like(list_of_base_points, self.point),
+    """
+
+    def create_point_lists(self, list_of_base_points):
+        self.child_point_array = np.full_like(list_of_base_points, self.point)
+
+    def __add__(self, other):
+        return Anchor(self.point + other.point)
 
 
-#TODO replace one at a time create of points to use numpy.arrays
+# TODO replace one at a time create of points to use numpy.arrays
 # see tests.pyg
 
 class Circle(Anchorable, BarMateSlide):
@@ -90,7 +125,7 @@ class Circle(Anchorable, BarMateSlide):
         # C = length * exp( starting_angle * j )
         self.rotation_speed: float = freq
 
-        self.length: float = length
+        self.child_length: float = length
 
         if not deg:
             self.starting_angle: float = angle
@@ -102,48 +137,92 @@ class Circle(Anchorable, BarMateSlide):
 
         self.parent: Type[Anchorable] = parent_object
 
-
-
         super().__init__()
 
+    """
     def get_point(self, time_step: float, other_is_bar: bool = False) -> complex:
         return self.parent.get_point(time_step) + \
                self.length_starting_angle * exp(self.exp_const * self.rotation_speed * time_step)
+    """
 
-    def get_point_lists(self) -> tuple:
+    """
+    def get_point_list(self, list_of_base_points: np.ndarray) -> Tuple[np.ndarray, ...]:
         pass
+    """
+
+    def create_point_lists(self, list_of_base_points: np.ndarray) -> None:
+        if self.parent.points_array is None:
+            self.parent.create_point_lists(list_of_base_points)
+
+        self.child_point_array = self.parent.points_array + (
+                self.length_starting_angle * exp(self.exp_const * self.rotation_speed * list_of_base_points))
 
     def __str__(self):
-        return f'length: {self.length}, freq: {self.rotation_speed}, angle: {self.starting_angle}'
+        return f'length: {self.child_length}, freq: {self.rotation_speed}, angle: {self.starting_angle}'
 
 
 class Bar(Anchorable, BarMateFix):
 
-    def __init__(self, parent_object, child_length_from_parent, mate_object,  mate_length_from_parent):
-        self.parent_object: Type[Anchorable] = parent_object
-        self.mate_object: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
+    def __init__(self, parent_object, child_length_from_parent, mate_object, mate_length_from_parent):
+        super().__init__()
+        self.parent: Type[Anchorable] = parent_object
+        self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
         self.child_length = child_length_from_parent
         self.mate_length = mate_length_from_parent
 
+    """
     def get_point(self, time_step: float):
-        parent = self.parent_object.get_point(time_step)
+        parent = self.parent.get_point(time_step)
 
-        if isinstance(self.mate_object, BarMateFix):
-            mate_parent, mate_length = self.mate_object.get_data_for_circle_intersections(time_step)
+        if isinstance(self.mate, BarMateFix):
+            mate_parent, mate_length = self.mate.get_data_for_circle_intersections(time_step)
 
             mate = get_circles_intersections(parent.real, parent.imag, self.mate_length,
-                                                   mate_parent.real, mate_parent.imag, mate_length)
-        elif isinstance(self.mate_object, BarMateSlide):
-            mate = self.mate_object.get_point(time_step)
+                                             mate_parent.real, mate_parent.imag, mate_length)
+            
+        elif isinstance(self.mate, BarMateSlide):
+            mate = self.mate.get_point(time_step)
 
         mate_parent_diff = mate - parent
         angle = phase(mate_parent_diff)
 
         return parent + (self.child_length * exp(angle * 1j))
+    """
+
+    def create_point_lists(self, list_of_base_points: np.ndarray) -> None:
+        if self.parent.child_point_array is None:
+            self.parent.create_point_lists(list_of_base_points)
+
+        if self.mate.child_point_array is None:
+            self.mate.create_point_lists(list_of_base_points)
+
+        #  mate is a Mate Fix
+        if isinstance(self.mate, BarMateFix):
+            pass
+        elif isinstance(self.mate, BarMateSlide):
+            pass
 
     def get_data_for_circle_intersections(self, time_step: float) -> tuple:
-        parent_point = self.parent_object.get_point(time_step)
-        return parent_point, self.mate_length
+        pass
+        # parent_point = self.parent.get_point(time_step)
+        # return parent_point, self.mate_length
+
+    def get_circle_intersection_with_mate(self):
+
+        d: np.ndarray = np.sqrt(np.power((self.child_point_array.real - self.mate.child_point_array.real), 2) +
+                    np.sqrt(np.power((self.child_point_array.imag - self.mate.child_point_array.imag), 2)))
+
+        if (d > (self.mate_length + self.mate.mate_length)).any():
+            raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
+
+        elif (d < abs(self.mate_length - self.mate.mate_length)).any():
+            raise IntersectionError(f'Non-intersecting circles. One contained in the other.')
+
+        elif (d == 0).any():
+            raise IntersectionError(f'Concentric circles.')
+        else:
+
+
 
 """
 class Draw:
@@ -158,8 +237,6 @@ class Draw:
 
 """
 
-
-
 anchor1 = Anchor(3 + 0j)
 # anchor1 = Anchor(0)
 anchor2 = Anchor(-3 - 0j)
@@ -168,7 +245,7 @@ c1 = Circle(1.5, .7, parent_object=anchor1)
 c2 = Circle(0.8, .5, parent_object=anchor2)
 bar2 = Bar(c1, 8, None, 6)
 b1 = Bar(c2, 9, bar2, 7)
-bar2.mate_object = b1
+bar2.mate = b1
 # b1 = Bar(anchor1, c1, 1.5)
 
 res = 0.001
@@ -176,16 +253,14 @@ rot = 10.0
 
 n1 = [b1.get_point(i) for i in range(20000000)]
 
-
 print('Done')
 import time
+
 time.sleep(20)
 # Draw(main_obj, *everything_else)
 
 # circles -> draw child point
 # bars -> draw parent to child, dot on mate
-
-
 
 
 """
