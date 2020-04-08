@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8791fdfe-c946-4b26-a9c6-f441c8e9340d" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/source/Circle.py" beforeDir="false" afterPath="$PROJECT_DIR$/source/Circle.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/tests/tests.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/tests.py" afterDir="false" />
@@ -37,9 +38,10 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="restartRequiresConfirmation" value="false" />
-    <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
+    <property name="settings.editor.selected.configurable" value="preferences.sourceCode" />
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
@@ -47,7 +49,7 @@
       <recent name="$PROJECT_DIR$/tests" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.tests">
+  <component name="RunManager" selected="Python.Circle">
     <configuration name="Circle" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CyloidDrawing" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -155,8 +157,8 @@
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.tests" />
         <item itemvalue="Python.Circle" />
+        <item itemvalue="Python.tests" />
         <item itemvalue="Python.animation_demo" />
         <item itemvalue="Python.doublep" />
         <item itemvalue="Python.Rotor" />
@@ -210,49 +212,57 @@
     </state>
     <state x="579" y="371" key="FileChooserDialogImpl/0.27.1600.1173@0.27.1600.1173" timestamp="1581038774293" />
     <state x="1245" y="441" width="555" height="520" key="FileChooserDialogImpl/0.27.3440.1413@0.27.3440.1413" timestamp="1581184229735" />
-    <state width="2536" height="205" key="GridCell.Tab.0.bottom" timestamp="1586197600683">
+    <state width="2512" height="205" key="GridCell.Tab.0.bottom" timestamp="1586380126943">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state width="1189" height="446" key="GridCell.Tab.0.bottom/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.bottom/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.bottom/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="2536" height="205" key="GridCell.Tab.0.bottom/0.27.2560.1413@0.27.2560.1413" timestamp="1586197600683" />
+    <state width="2512" height="205" key="GridCell.Tab.0.bottom/0.27.2560.1413@0.27.2560.1413" timestamp="1586380126943" />
     <state width="2585" height="446" key="GridCell.Tab.0.bottom/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
-    <state width="2536" height="205" key="GridCell.Tab.0.center" timestamp="1586197600683">
+    <state width="2512" height="205" key="GridCell.Tab.0.center" timestamp="1586380126942">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state width="1189" height="446" key="GridCell.Tab.0.center/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.center/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.center/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="2536" height="205" key="GridCell.Tab.0.center/0.27.2560.1413@0.27.2560.1413" timestamp="1586197600683" />
+    <state width="2512" height="205" key="GridCell.Tab.0.center/0.27.2560.1413@0.27.2560.1413" timestamp="1586380126942" />
     <state width="2585" height="446" key="GridCell.Tab.0.center/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
-    <state width="2536" height="205" key="GridCell.Tab.0.left" timestamp="1586197600683">
+    <state width="2512" height="205" key="GridCell.Tab.0.left" timestamp="1586380126942">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state width="1189" height="446" key="GridCell.Tab.0.left/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.left/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898314" />
     <state width="2176" height="412" key="GridCell.Tab.0.left/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491650" />
-    <state width="2536" height="205" key="GridCell.Tab.0.left/0.27.2560.1413@0.27.2560.1413" timestamp="1586197600683" />
+    <state width="2512" height="205" key="GridCell.Tab.0.left/0.27.2560.1413@0.27.2560.1413" timestamp="1586380126942" />
     <state width="2585" height="446" key="GridCell.Tab.0.left/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471301" />
-    <state width="2536" height="205" key="GridCell.Tab.0.right" timestamp="1586197600683">
+    <state width="2512" height="205" key="GridCell.Tab.0.right" timestamp="1586380126942">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state width="1189" height="446" key="GridCell.Tab.0.right/0.27.1600.1173@0.27.1600.1173" timestamp="1581270383796" />
     <state width="2176" height="394" key="GridCell.Tab.0.right/0.27.2200.1273@0.27.2200.1273" timestamp="1578345898315" />
     <state width="2176" height="412" key="GridCell.Tab.0.right/0.27.2200.1323@0.27.2200.1323" timestamp="1578348491651" />
-    <state width="2536" height="205" key="GridCell.Tab.0.right/0.27.2560.1413@0.27.2560.1413" timestamp="1586197600683" />
+    <state width="2512" height="205" key="GridCell.Tab.0.right/0.27.2560.1413@0.27.2560.1413" timestamp="1586380126942" />
     <state width="2585" height="446" key="GridCell.Tab.0.right/0.27.3440.1413@0.27.3440.1413" timestamp="1581522471302" />
-    <state x="647" y="316" width="900" height="744" key="SettingsEditor" timestamp="1585655945640">
+    <state x="282" y="97" width="1963" height="1161" key="SettingsEditor" timestamp="1586375616508">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state x="404" y="267" width="1052" height="737" key="SettingsEditor/0.27.1600.1173@0.27.1600.1173" timestamp="1581039190986" />
-    <state x="647" y="316" width="900" height="744" key="SettingsEditor/0.27.2560.1413@0.27.2560.1413" timestamp="1585655945640" />
+    <state x="282" y="97" width="1963" height="1161" key="SettingsEditor/0.27.2560.1413@0.27.2560.1413" timestamp="1586375616508" />
     <state x="869" y="316" width="1052" height="737" key="SettingsEditor/0.27.3440.1413@0.27.3440.1413" timestamp="1581192533008" />
     <state x="916" y="560" key="com.intellij.ide.util.TipDialog" timestamp="1585144342527">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>
     <state x="916" y="560" key="com.intellij.ide.util.TipDialog/0.27.2560.1413@0.27.2560.1413" timestamp="1585144342527" />
     <state x="1231" y="560" key="com.intellij.ide.util.TipDialog/0.27.3440.1413@0.27.3440.1413" timestamp="1581121720163" />
+    <state x="898" y="342" width="936" height="783" key="find.popup" timestamp="1586371464694">
+      <screen x="0" y="27" width="2560" height="1413" />
+    </state>
+    <state x="898" y="342" width="936" height="783" key="find.popup/0.27.2560.1413@0.27.2560.1413" timestamp="1586371464694" />
+    <state x="875" y="395" width="800" height="684" key="scopes" timestamp="1586375601991">
+      <screen x="0" y="27" width="2560" height="1413" />
+    </state>
+    <state x="875" y="395" width="800" height="684" key="scopes/0.27.2560.1413@0.27.2560.1413" timestamp="1586375601991" />
     <state x="943" y="349" width="672" height="678" key="search.everywhere.popup" timestamp="1585161178727">
       <screen x="0" y="27" width="2560" height="1413" />
     </state>

@@ -336,58 +336,161 @@ print(points2)
 print(d)
 """
 
-from numpy import ndarray, sqrt, power
+from numpy import ndarray, sqrt, power, array
+import numpy as np
+from typing import Type
+import matplotlib.pyplot as plt
+
+class IntersectionError(Exception):
+    pass
+
 
 class CircleMate:
 
     def __init__(self, radius: float, centers: ndarray):
         self.r: float = radius
         self.c: ndarray[complex] = centers
+        self.points: Type[ndarray[complex], None] = None
 
-    def get_circles_intersections(self, other):
+    def get_circles_intersections(self, mate) -> None:
         # circle 1: (x0, y0), radius r0
         # circle 2: (x1, y1), radius r1
-
-        d = sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+        # x1 = mate
+        # x0 = self
+        # d = sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2)
+        d = sqrt(power((mate.c.real - self.c.real), 2) + power((mate.c.imag - self.c.imag), 2))
 
         # non intersecting
-        if d > r0 + r1:
+        if (d > (mate.r + self.r)).any():
             raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
         # One circle within other
-        if d < abs(r0 - r1):
+        elif (d < abs(mate.r - self.r)).any():
             raise IntersectionError(f'Non-intersecting circles. One contained in the other.')
         # coincident circles
-        if d == 0:
+        elif (d == 0).any():
             raise IntersectionError(f'Concentric circles.')
         else:
             # to ensure a bias to top and right
-            if x0 < x1:
-                x0, x1 = x1, x0
-                r0, r1 = r1, r0
-            if y0 > y1:
-                y0, y1 = y1, y0
-                r0, r1 = r1, r0
+            # if x0 < x1:
+            #     x0, x1 = x1, x0
+            #     r0, r1 = r1, r0
+            # if y0 > y1:
+            #     y0, y1 = y1, y0
+            #     r0, r1 = r1, r0
+            #
+            # a = (self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)
+            # h = sqrt(self.r ** 2 - ((self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)) ** 2)
+            # x2 = self.c.real + a * (mate.c.real - self.c.real) / d
+            # y2 = self.c.imag + a * (mate.c.imag - mate.c.imag) / d
+            # x3 = x2 + h * (y1 - y0) / d
+            # x3 = (self.c.real + a * (mate.c.real - self.c.real) / d) + h * (mate.c.imag - self.c.imag) / d
+            # y3 = y2 - h * (x1 - x0) / d
+            # y3 = (self.c.imag + a * (mate.c.imag - mate.c.imag) / d) - h * (mate.c.real - self.c.real) / d
 
-            a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
-            h = sqrt(r0 ** 2 - a ** 2)
-            x2 = x0 + a * (x1 - x0) / d
-            y2 = y0 + a * (y1 - y0) / d
-            x3 = x2 + h * (y1 - y0) / d
-            y3 = y2 - h * (x1 - x0) / d
+            # self.points = np.where()
 
-            return x3 + y3 * 1j
+            self.points = \
+                ((self.c.real + ((self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)) * (mate.c.real - self.c.real) / d) + (
+                    sqrt(self.r ** 2 - ((self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)) ** 2)) * (
+                         mate.c.imag - self.c.imag) / d) + \
+                ((self.c.imag + ((self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)) * (mate.c.imag - mate.c.imag) / d) - (
+                    sqrt(self.r ** 2 - ((self.r ** 2 - mate.r ** 2 + d ** 2) / (2 * d)) ** 2)) * (
+                         mate.c.real - self.c.real) / d) * 1j
+
+def get_intercetions(x0, y0, r0, x1, y1, r1):
+    # circle 1: (x0, y0), radius r0
+    # circle 2: (x1, y1), radius r1
+
+    d=sqrt((x1-x0)**2 + (y1-y0)**2)
+
+    # non intersecting
+    if d > r0 + r1 :
+        return None
+    # One circle within other
+    if d < abs(r0-r1):
+        return None
+    # coincident circles
+    if d == 0 and r0 == r1:
+        return None
+    else:
+        a=(r0**2-r1**2+d**2)/(2*d)
+        h=sqrt(r0**2-a**2)
+        x2=x0+a*(x1-x0)/d
+        y2=y0+a*(y1-y0)/d
+        x3=x2+h*(y1-y0)/d
+        y3=y2-h*(x1-x0)/d
+
+        x4=x2-h*(y1-y0)/d
+        y4=y2+h*(x1-x0)/d
+
+        return x3, y3, x4, y4
 
 
+# c1 = CircleMate(5, array([-2.5 + 1j, -2 + 1j, -1 + 1j, -0.5 + 1j, 1 + 1j,  2 + 1j]))
+# c2 = CircleMate(5, array([2.5 + 1j,   2 + 1j,  1 + 1j,  0 + 1j,  -1 + 1j, -2 + 1j]))
+# c1 = CircleMate(5, array([-2 + 1j,  2 + 1j]))
+# c2 = CircleMate(5, array([ 2 + 1j, -2 + 1j]))
+c1 = CircleMate(4, array([ 2 + 1.5j, -2 - 1.5j]))
+c2 = CircleMate(4, array([-2 - 1.5j,  2 + 1.5j]))
+
+c1.get_circles_intersections(c2)
 
 
+centercir = plt.Circle((0,0), 1.9, color='linen')
+movecir1 = plt.Circle((2,2), 1, color='silver')
+movecir2 = plt.Circle((-2,2), 1, color='silver')
+movecir3 = plt.Circle((-2,-2), 1, color='silver')
+movecir4 = plt.Circle((2,-2), 1, color='silver')
+# print(c1.points)
+p2m2 = np.linspace(2, -2)
+m2p2 = np.linspace(-2, 2)
+
+xpyp2xmyp = [get_intercetions(i, 2, 1, 0, 0, 1.9) for i in p2m2]
+xmyp2xmym = [get_intercetions(-2, i, 1, 0,0,1.9) for i in p2m2]
+xmym2xpym = [get_intercetions(i, -2, 1, 0,0,1.9) for i in m2p2]
+xpym2xpyp = [get_intercetions(2, i, 1, 0,0,1.9) for i in m2p2]
+
+# x+y+ -> x-y+
+# for i in range(len(x)):
+    # print(f'x: {i:22} = {get_intercetions(i, 2, 1, 0, 0, 1.9)}')
+    # print(f'x: {x[i]:22} = {plusplus[i]}')
 
 
+fig = plt.figure(figsize=(10,10))
+ax = plt.axes(xlim=(-3,3), ylim=(-3,3))
+
+interx1 = [i[0] for i in xpyp2xmyp]
+intery1 = [i[1] for i in xpyp2xmyp]
+
+interx2 = [i[0] for i in xmyp2xmym]
+intery2 = [i[1] for i in xmyp2xmym]
+
+interx3 = [i[0] for i in xmym2xpym]
+intery3 = [i[1] for i in xmym2xpym]
+
+interx4 = [i[0] for i in xpym2xpyp]
+intery4 = [i[1] for i in xpym2xpyp]
+
+# print(plusplus)
+# print(interx)
 
 
+ax.add_artist(centercir)
+ax.add_artist(movecir1)
+ax.add_artist(movecir2)
+ax.add_artist(movecir3)
+ax.add_artist(movecir4)
+ax.plot(interx1, intery1, color='c')
+ax.plot(interx2, intery2, color='dodgerblue')
+ax.plot(interx3, intery3, color='deeppink')
+ax.plot(interx4, intery4, color='lawngreen')
 
+plt.show()
 
+# for i in x:
+    # print(f'x: {i:22} = {get_intercetions(i, 2, 1, 0, 0, 1.9)}')
 
-
-
-
-
+# print(get_intercetions(2,1.5,4,-2,-1.5,3))
+# print(get_intercetions(-2,-1.5,3,2,1.5,4))
+# print(get_intercetions(2,-1.5,3,-2,1.5,4))
+# print(get_intercetions(-2,1.5,3,2,-1.5,4))
