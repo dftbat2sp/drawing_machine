@@ -126,8 +126,8 @@ class Anchor(Anchorable):
     """
 
     def create_point_lists(self, base_points_list: RotationResolution):
-        # self.point_array = np.full_like(base_points_list.point_list, self.point, dtype=complex)
-        self.point_array = self.point
+        self.point_array = np.full_like(base_points_list.point_list, self.point, dtype=complex)
+        # self.point_array = self.point
 
     def __add__(self, other):
         return Anchor(self.point + other.point)
@@ -157,18 +157,14 @@ class Circle(Anchorable, BarMateSlide):
 
         self.parent: Anchorable = parent_object
 
+        """
+        Drawing Objects
+        """
+        self.circle_edge_plot = plt.Circle((0, 0), self.radius, fill=False)
+        self.centre2point_line_plot = plt.Line2D([], [])
+        self.marker_plot = plt.Line2D([], [])
+
         super().__init__()
-
-    """
-    def get_point(self, time_step: float, other_is_bar: bool = False) -> complex:
-        return self.parent.get_point(time_step) + \
-               self.length_starting_angle * exp(self.exp_const * self.mate_lengthotation_speed * time_step)
-    """
-
-    """
-    def get_point_list(self, base_points_list: np.ndarray) -> Tuple[np.ndarray, ...]:
-        pass
-    """
 
     def create_point_lists(self, base_points_list: RotationResolution) -> None:
         if self.point_array is None:
@@ -177,6 +173,8 @@ class Circle(Anchorable, BarMateSlide):
             self.point_array = self.parent.point_array + self.length_starting_angle * np.exp(
                 self.exp_const * self.rotation_frequency * base_points_list.point_list)
 
+    def update_drawing_objects(self, frame):
+        pass
 
 def __str__(self):
     return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
@@ -273,11 +271,13 @@ class Bar(Anchorable, BarMateFix):
 
 
 def animate_all(drawer: Type[Anchorable], resolution_obj, *supports):
-    fig = plt.figure(figsize=(10, 10))
-    ax = plt.axes(xlim=(-3, 3), ylim=(-3, 3))
+    fig = plt.figure(figsize=(8, 8))
+    ax = plt.axes(xlim=(-1, 4), ylim=(-1, 4))
     ax.set_aspect('equal')
 
     drawer.create_point_lists(resolution_obj)
+
+    # print(drawer.point_array[:50].real)
 
     for obj in supports:
         obj.create_point_lists(resolution_obj)
@@ -292,8 +292,30 @@ def animate_all(drawer: Type[Anchorable], resolution_obj, *supports):
     drawer_line, = ax.plot([], [])
     drawer_marker, = ax.plot([], [], marker='o', markersize=3, color='r')
 
+    support_line = []
+    support_marker = []
+
+    for _ in supports:
+        line, = ax.plot([], [])
+        mark, = ax.plot([], [], marker='o', markersize=3, color='r')
+        support_line.append(line)
+        support_marker.append(mark)
+        # support_line.append(ax.plot([], []))
+        # support_marker.append(ax.plot([], [], marker='o', markersize=3, color='r'))
+
+    dl1 = plt.Line2D([], [])
+
+    c1 = plt.Circle((0, 0), 1, fill=False)
+    l1 = plt.Line2D([], [])
+
+    # c2 = plt.Circle((0,0),1)
+
     def init():
-        return plt.axes().plot([], [])
+        ax.add_patch(c1)
+        ax.add_patch(l1)
+        ax.add_patch(dl1)
+        # ax.add_artist(c2)
+        return drawer_line, drawer_marker, c1, l1, dl1
 
     def get_frames():
         for i in range(drawer.point_array.size):
@@ -302,11 +324,31 @@ def animate_all(drawer: Type[Anchorable], resolution_obj, *supports):
                 yield point
 
     def animate(frame, *fargs):
+        frame = frame - 1
+        drawer_line.set_data(drawer.point_array[:frame + 1].real, drawer.point_array[:frame + 1].imag)
+        drawer_marker.set_data(drawer.point_array[frame].real, drawer.point_array[frame].imag)
+        dl1.set_data([drawer.parent.point_array[frame].real, drawer.point_array[frame].real],
+                     [drawer.parent.point_array[frame].imag, drawer.point_array[frame].imag])
+        # print(drawer.point_array[:frame].real)
 
-        drawer_line.set_data(drawer.point_array.real[:frame], drawer.point_array.imag[:frame])
-        drawer_marker.set_data(drawer.point_array.real[frame], drawer.point_array.imag[frame])
+        c1.set_center((supports[2].parent.point_array[frame].real, supports[2].parent.point_array[frame].imag))
+        l1.set_data([supports[2].parent.point_array[frame].real, supports[2].point_array[frame].real],
+                    [supports[2].parent.point_array[frame].imag, supports[2].point_array[frame].imag])
+        # print(supports[2].parent.point_array[frame])
+        # c1.set_radius(1)
 
-        return drawer_line, drawer_marker
+        # c2.set_center((supports[2].parent.point_array[frame].real, supports[2].parent.point_array[frame].imag))
+        # c2.set_radius(1)
+
+        # for num, sup in enumerate(supports):
+        #     if isinstance(sup, Circle):
+        #
+        #         pass
+        #     else:
+        #         support_line[num].set_data(sup.point_array[:frame].real, sup.point_array[:frame].imag)
+        #         support_marker[num].set_data(sup.point_array[frame].real, sup.point_array[frame].imag)
+
+        return drawer_line, drawer_marker, support_line[1], support_line[2], c1, l1, dl1
 
     mpl_animation.FuncAnimation(fig, animate,
                                 init_func=init,
@@ -314,7 +356,8 @@ def animate_all(drawer: Type[Anchorable], resolution_obj, *supports):
                                 blit=True,
                                 save_count=1,
                                 frames=get_frames,
-                                repeat=False)
+                                repeat=False,
+                                fargs=supports)
 
     plt.show()
 
@@ -326,6 +369,8 @@ circle3 = Circle(0.1, 12, parent_object=circle2)
 base_points = RotationResolution(rotations=5)
 # anchor1.create_point_lists(pointlist)
 
+# animate_all(circle1, base_points, anchor1)
+# animate_all(circle2, base_points, anchor1, circle1)
 animate_all(circle3, base_points, anchor1, circle1, circle2)
 
 # x2 = x0 + a * (x1 - x0) / d
