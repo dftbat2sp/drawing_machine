@@ -38,7 +38,7 @@ patch = cir.return_drawers()
 def init():
     # patch.center = (5, 5)
     for obj in patch:
-        ax.add_patch(obj)
+        ax.add_artist(obj)
         joy = obj
     return itertools.chain(patch, patch)
 

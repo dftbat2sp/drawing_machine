@@ -1,12 +1,13 @@
 import math
 import cmath
-from typing import Type, Union, Tuple
+from typing import Type, Union, Tuple, Iterable, List
 import numpy as np
 from dataclasses import dataclass
 import itertools
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as mpl_animation
+import matplotlib.gridspec as gridspec
 
 
 class IntersectionError(Exception):
@@ -61,33 +62,20 @@ class RotationResolution:
 class Anchorable:
 
     def __init__(self):
-        self.point_array: Type[np.ndarray, complex, None] = None
+        self.point_array: Type[np.ndarray, None] = None
         self.list_calculated = False
-
-    """
-    def get_point(self, time_step: float) -> complex:
-        raise NotImplementedError
-    """
-    """
-    def get_point_list(self, base_points_list: np.ndarray) -> Tuple[np.ndarray, ...]:
-        raise NotImplementedError
-    """
 
     def create_point_lists(self, base_points_list: RotationResolution) -> None:
         raise NotImplementedError
 
+    def update_drawing_objects(self, frame) -> None:
+        raise NotImplementedError
 
-"""
-class PointList:
+    def get_main_drawing_objects(self) -> List:
+        raise NotImplementedError
 
-    def __init__(self, anchorable_object: Type[Anchorable], resolution: float, number_of_rotations: float):
-        self.object = anchorable_object
-        self.number_of_points = int(number_of_rotations / resolution)
-        self.mate_lengthotation_step_list = [resolution * i for i in range(self.number_of_points)]
-
-    def get_points_list(self):
-        return [self.object.get_point(i) for i in self.mate_lengthotation_step_list]
-"""
+    def get_secondary_drawing_objects(self) -> List:
+        raise NotImplementedError
 
 
 class BarMateSlide:
@@ -115,26 +103,28 @@ class Anchor(Anchorable):
         super().__init__()
         self.point = complex_number
 
-    """
-    def get_point(self, time_step: float, other_is_bar: bool = False) -> (complex, tuple):
-        return self.point
-    """
-
-    """
-    def get_point_list(self, base_points_list: np.ndarray) -> Tuple[np.ndarray, ...]:
-        return np.full_like(base_points_list, self.point),
-    """
+        """
+        Drawing Objects
+        """
+        self.main_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
+        self.secondary_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
 
     def create_point_lists(self, base_points_list: RotationResolution):
         self.point_array = np.full_like(base_points_list.point_list, self.point, dtype=complex)
         # self.point_array = self.point
 
+    def update_drawing_objects(self, frame) -> None:
+        pass  # do nothing, point stays still
+
+    def get_main_drawing_objects(self) -> List:
+        return [self.main_marker, ]
+
+    def get_secondary_drawing_objects(self) -> List:
+        return [self.secondary_marker, ]
+
     def __add__(self, other):
         return Anchor(self.point + other.point)
 
-
-# TODO replace one at a time create of points to use numpy.arrays
-# see tests.pyg
 
 class Circle(Anchorable, BarMateSlide):
     exp_const = math.tau * 1j
@@ -160,9 +150,11 @@ class Circle(Anchorable, BarMateSlide):
         """
         Drawing Objects
         """
-        self.circle_edge_plot = plt.Circle((0, 0), self.radius, fill=False)
-        self.centre2point_line_plot = plt.Line2D([], [])
-        self.marker_plot = plt.Line2D([], [])
+        self.main_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
+        self.main_centre2point_line_artist = plt.Line2D([], [], marker='o', markevery=(1, 1))
+
+        self.secondary_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
+        self.secondary_centre2point_line_artist = plt.Line2D([], [], marker='o', markevery=(1, 1))
 
         super().__init__()
 
@@ -173,8 +165,25 @@ class Circle(Anchorable, BarMateSlide):
             self.point_array = self.parent.point_array + self.length_starting_angle * np.exp(
                 self.exp_const * self.rotation_frequency * base_points_list.point_list)
 
-    def update_drawing_objects(self, frame):
-        pass
+    def update_drawing_objects(self, frame) -> None:
+        self.main_circle_edge_artist.set_center(
+            (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
+        self.main_centre2point_line_artist.set_data(
+            [self.parent.point_array[frame].real, self.point_array[frame].real],  # x
+            [self.parent.point_array[frame].imag, self.point_array[frame].imag])  # y
+
+        self.secondary_circle_edge_artist.set_center(
+            (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
+        self.secondary_centre2point_line_artist.set_data(
+            [self.parent.point_array[frame].real, self.point_array[frame].real],  # x
+            [self.parent.point_array[frame].imag, self.point_array[frame].imag])  # y
+
+    def get_main_drawing_objects(self) -> List:
+        return [self.main_circle_edge_artist, self.main_centre2point_line_artist]
+
+    def get_secondary_drawing_objects(self) -> List:
+        return [self.secondary_circle_edge_artist, self.secondary_centre2point_line_artist]
+
 
 def __str__(self):
     return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
@@ -270,141 +279,177 @@ class Bar(Anchorable, BarMateFix):
             self.mate.mate_point_array = self.mate_point_array
 
 
-def animate_all(drawer: Type[Anchorable], resolution_obj, *supports):
-    fig = plt.figure(figsize=(8, 8))
-    ax = plt.axes(xlim=(-1, 4), ylim=(-1, 4))
-    ax.set_aspect('equal')
-
+def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *components: Anchorable):
     drawer.create_point_lists(resolution_obj)
 
-    # print(drawer.point_array[:50].real)
+    # comp_artist_list = drawer.get_drawing_objects()
+    drawer_artist_list = drawer.get_main_drawing_objects()
+    comp_artist_list = []
+    for comp in components:
+        comp.create_point_lists(resolution_obj)
+        comp_artist_list.extend(comp.get_main_drawing_objects())
 
-    for obj in supports:
-        obj.create_point_lists(resolution_obj)
+    fig = plt.figure(figsize=(21, 13))
+    x_min = min(drawer.point_array.real)
+    x_max = max(drawer.point_array.real)
+    y_min = min(drawer.point_array.imag)
+    y_max = max(drawer.point_array.imag)
 
-    # for pen in itertools.chain([drawer], supports):
-    # # for pen in [*drawer, *supports]:
-    #     if isinstance(pen, Anchor):
-    #         ax.plot(pen.point_array.real, pen.point_array.imag, marker="*")
-    #     elif isinstance(pen, Circle):
-    #         ax.plot(pen.point_array.real, pen.point_array.imag)
+    gs_parent = gridspec.GridSpec(1, 2, figure=fig)
+    num_of_rows = 4
+    num_of_seperate_plot_columns = int(math.ceil(len(components) / num_of_rows))
+    gs_comp_plots = gridspec.GridSpecFromSubplotSpec(num_of_rows, num_of_seperate_plot_columns,
+                                                     subplot_spec=gs_parent[0])
+    gs_main_plots = gridspec.GridSpecFromSubplotSpec(num_of_rows, 2, subplot_spec=gs_parent[1])
 
-    drawer_line, = ax.plot([], [])
-    drawer_marker, = ax.plot([], [], marker='o', markersize=3, color='r')
+    main_draw_ax = fig.add_subplot(gs_main_plots[:, 0])
+    main_final_shape_ax = fig.add_subplot(gs_main_plots[:, 1])
 
-    support_line = []
-    support_marker = []
+    # set xy limits for final drawing axes
+    main_draw_ax.set_xlim((x_min - 1, x_max + 1))
+    main_draw_ax.set_ylim((y_min - 1, y_max + 1))
 
-    for _ in supports:
-        line, = ax.plot([], [])
-        mark, = ax.plot([], [], marker='o', markersize=3, color='r')
-        support_line.append(line)
-        support_marker.append(mark)
-        # support_line.append(ax.plot([], []))
-        # support_marker.append(ax.plot([], [], marker='o', markersize=3, color='r'))
+    main_final_shape_ax.set_xlim((x_min - 1, x_max + 1))
+    main_final_shape_ax.set_ylim((y_min - 1, y_max + 1))
 
-    dl1 = plt.Line2D([], [])
+    # set axis aspect ratio for final drawing axes
+    main_draw_ax.set_aspect('equal')
+    main_final_shape_ax.set_aspect('equal')
 
-    c1 = plt.Circle((0, 0), 1, fill=False)
-    l1 = plt.Line2D([], [])
+    final_line, = main_draw_ax.plot([], [])
+    # finished_final_line, = main_final_shape_ax.plot(drawer.point_array.real, drawer.point_array.imag)
+    main_final_shape_ax.plot(drawer.point_array.real, drawer.point_array.imag)
 
-    # c2 = plt.Circle((0,0),1)
+    comp_axis_list = []
+    comp_axis_artist_list = []
+    comp_axis_artist_list_list = []
+
+    #TODO get secondary comp axes to senter on parent and not move around in frame.
+    # either by changes axis
+    # or recentering data on the origin
+
+    for num, comp in enumerate(components):
+        col = int(math.floor(num / num_of_rows))
+        row = num % num_of_rows
+
+        x_min = min(comp.point_array.real)
+        x_max = max(comp.point_array.real)
+        y_min = min(comp.point_array.imag)
+        y_max = max(comp.point_array.imag)
+
+        temp_ax = fig.add_subplot(gs_comp_plots[row, col])
+        temp_ax.set_xlim((x_min - 1, x_max + 1))
+        temp_ax.set_ylim((y_min - 1, y_max + 1))
+        temp_ax.set_aspect('equal')
+
+        comp_axis_list.append(temp_ax)
+
+        comp_axis_artist_list_list.append(comp.get_secondary_drawing_objects())
+        comp_axis_artist_list.extend(comp.get_secondary_drawing_objects())
+
+    # individual components
 
     def init():
-        ax.add_patch(c1)
-        ax.add_patch(l1)
-        ax.add_patch(dl1)
+        for artist in itertools.chain(drawer_artist_list, comp_artist_list):
+            main_draw_ax.add_artist(artist)
         # ax.add_artist(c2)
-        return drawer_line, drawer_marker, c1, l1, dl1
+        for i, artist_list in enumerate(comp_axis_artist_list_list):
+            for artist in artist_list:
+                comp_axis_list[i].add_artist(artist)
+
+        return itertools.chain([final_line], drawer_artist_list, comp_artist_list, comp_axis_artist_list)
+        # return itertools.chain([final_line], drawer_artist_list, comp_artist_list)
+        return [final_line]
 
     def get_frames():
         for i in range(drawer.point_array.size):
-            point = i * 1
+            point = i * 20
             if point < drawer.point_array.size:
                 yield point
 
-    def animate(frame, *fargs):
-        frame = frame - 1
-        drawer_line.set_data(drawer.point_array[:frame + 1].real, drawer.point_array[:frame + 1].imag)
-        drawer_marker.set_data(drawer.point_array[frame].real, drawer.point_array[frame].imag)
-        dl1.set_data([drawer.parent.point_array[frame].real, drawer.point_array[frame].real],
-                     [drawer.parent.point_array[frame].imag, drawer.point_array[frame].imag])
-        # print(drawer.point_array[:frame].real)
+    def animate(frame):
 
-        c1.set_center((supports[2].parent.point_array[frame].real, supports[2].parent.point_array[frame].imag))
-        l1.set_data([supports[2].parent.point_array[frame].real, supports[2].point_array[frame].real],
-                    [supports[2].parent.point_array[frame].imag, supports[2].point_array[frame].imag])
-        # print(supports[2].parent.point_array[frame])
-        # c1.set_radius(1)
+        drawer.update_drawing_objects(frame)
 
-        # c2.set_center((supports[2].parent.point_array[frame].real, supports[2].parent.point_array[frame].imag))
-        # c2.set_radius(1)
+        for anchorable_obj in components:
+            anchorable_obj.update_drawing_objects(frame)
+        # frame = frame - 1
+        final_line.set_data(drawer.point_array[:frame + 1].real, drawer.point_array[:frame + 1].imag)
 
-        # for num, sup in enumerate(supports):
-        #     if isinstance(sup, Circle):
+        for axis in comp_axis_list:
+            axis.set
+        # drawer_marker.set_data(drawer.point_array[frame].real, drawer.point_array[frame].imag)
+        # dl1.set_data([drawer.parent.point_array[frame].real, drawer.point_array[frame].real],
+        #              [drawer.parent.point_array[frame].imag, drawer.point_array[frame].imag])
+        # # print(drawer.point_array[:frame].real)
         #
-        #         pass
-        #     else:
-        #         support_line[num].set_data(sup.point_array[:frame].real, sup.point_array[:frame].imag)
-        #         support_marker[num].set_data(sup.point_array[frame].real, sup.point_array[frame].imag)
+        # c1.set_center((supports[2].parent.point_array[frame].real, supports[2].parent.point_array[frame].imag))
+        # l1.set_data([supports[2].parent.point_array[frame].real, supports[2].point_array[frame].real],
+        #             [supports[2].parent.point_array[frame].imag, supports[2].point_array[frame].imag])
 
-        return drawer_line, drawer_marker, support_line[1], support_line[2], c1, l1, dl1
+        return itertools.chain([final_line], drawer_artist_list, comp_artist_list, comp_axis_artist_list)
+        # return itertools.chain([final_line], drawer_artist_list, comp_artist_list)
+        # return [final_line]
 
     mpl_animation.FuncAnimation(fig, animate,
                                 init_func=init,
-                                interval=100,
+                                interval=1,
                                 blit=True,
                                 save_count=1,
                                 frames=get_frames,
-                                repeat=False,
-                                fargs=supports)
+                                repeat=False)
 
     plt.show()
 
 
 anchor1 = Anchor(1 + 1j)
-circle1 = Circle(1, 1, parent_object=anchor1)
-circle2 = Circle(1, 2, parent_object=circle1)
-circle3 = Circle(0.1, 12, parent_object=circle2)
+circle1 = Circle(1, 0.233, parent_object=anchor1)
+circle2 = Circle(0.35, 0.377, parent_object=circle1)
+circle3 = Circle(0.1, 2, parent_object=circle2)
+circle4 = Circle(0.2, 0.01, parent_object=circle3)
+circle5 = Circle(0.2, 0.01, starting_angle=1, parent_object=circle4)
 base_points = RotationResolution(rotations=5)
 # anchor1.create_point_lists(pointlist)
 
 # animate_all(circle1, base_points, anchor1)
 # animate_all(circle2, base_points, anchor1, circle1)
-animate_all(circle3, base_points, anchor1, circle1, circle2)
+# animate_all(circle3, base_points, anchor1, circle1, circle2)
+# animate_all(circle4, base_points, anchor1, circle1, circle2, circle3)
+animate_all(circle5, base_points, anchor1, circle1, circle2, circle3, circle4)
+"""
+x2 = x0 + a * (x1 - x0) / d
+y2 = y0 + a * (y1 - y0) / d
 
-# x2 = x0 + a * (x1 - x0) / d
-# y2 = y0 + a * (y1 - y0) / d
+x2 = (self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d))
+y2 = (self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d))
+x2 = self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)
+y2 = self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)
 
-# x2 = (self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d))
-# y2 = (self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d))
-# x2 = self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)
-# y2 = self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)
-#
-# x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
-# y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
+x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
+y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
 
 
-#
-# x3 = x2 + h * (
-#         y1 - y0) / d
-# y3 = y2 - h * (x1 - x0) / d
 
-# self.mate_point_array = \
-#     ((self.parent.point_array.real + (
-#                 (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) * (
-#                   self.mate.parent.point_array.real - self.parent.point_array.real) / d) + (
-#          sqrt(self.mate_length ** 2 - (
-#                      (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) ** 2)) * (
-#              self.mate.parent.point_array.imag - self.parent.point_array.imag) / d) + \
-#     ((self.parent.point_array.imag + (
-#                 (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) * (
-#                   self.mate.parent.point_array.imag - self.mate.parent.point_array.imag) / d) - (
-#          sqrt(self.mate_length ** 2 - (
-#                      (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) ** 2)) * (
-#              self.mate.parent.point_array.real - self.parent.point_array.real) / d) * 1j
-#
-# self.mate.mate_point_array = self.mate_point_array
+x3 = x2 + h * (
+        y1 - y0) / d
+y3 = y2 - h * (x1 - x0) / d
+
+self.mate_point_array = \
+    ((self.parent.point_array.real + (
+                (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) * (
+                  self.mate.parent.point_array.real - self.parent.point_array.real) / d) + (
+         sqrt(self.mate_length ** 2 - (
+                     (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) ** 2)) * (
+             self.mate.parent.point_array.imag - self.parent.point_array.imag) / d) + \
+    ((self.parent.point_array.imag + (
+                (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) * (
+                  self.mate.parent.point_array.imag - self.mate.parent.point_array.imag) / d) - (
+         sqrt(self.mate_length ** 2 - (
+                     (self.mate_length ** 2 - self.mate.mate_length ** 2 + d ** 2) / (2 * d)) ** 2)) * (
+             self.mate.parent.point_array.real - self.parent.point_array.real) / d) * 1j
+
+self.mate.mate_point_array = self.mate_point_array
+"""
 """
 class Draw:
 
