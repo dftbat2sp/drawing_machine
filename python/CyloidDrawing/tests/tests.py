@@ -335,7 +335,7 @@ print(points1)
 print(points2)
 print(d)
 """
-
+"""
 from numpy import ndarray, sqrt, power, array
 import numpy as np
 from typing import Type
@@ -494,3 +494,12 @@ plt.show()
 # print(get_intercetions(-2,-1.5,3,2,1.5,4))
 # print(get_intercetions(2,-1.5,3,-2,1.5,4))
 # print(get_intercetions(-2,1.5,3,2,-1.5,4))
+"""
+
+import itertools
+import numpy as np
+l1 = np.array([1,2,3,4,5])
+l2 = np.array([2,3,4,5,6])
+
+print(max(itertools.chain(l1,l2)))
+# print(max(l1, l2))

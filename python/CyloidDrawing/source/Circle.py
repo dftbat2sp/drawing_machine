@@ -77,6 +77,32 @@ class Anchorable:
     def get_secondary_drawing_objects(self) -> List:
         raise NotImplementedError
 
+    def get_min_max_values(self) -> Tuple:
+        """
+        returns the min and max values
+        Returns
+        -------
+        Tuple with 4 values:
+            Minimum X Value
+            Maximum X Value
+            Minimum Y Value
+            Maximum Y Value
+        """
+        raise NotImplementedError
+
+    def get_min_max_values_normalized_to_origin(self) -> Tuple:
+        """
+        Get the min/max xy values of object if parent is moved to zero
+        Returns
+        -------
+        Tuple with 4 values:
+            Minimum X Value if parent was at origin
+            Maximum X Value if parent was at origin
+            Minimum Y Value if parent was at origin
+            Maximum Y Value if parent was at origin
+        """
+        raise NotImplementedError
+
 
 class BarMateSlide:
     pass
@@ -85,10 +111,7 @@ class BarMateSlide:
 class BarMateFix:
 
     def __init__(self):
-        self.mate_point_array = None
-
-    # def get_data_for_circle_intersections(self) -> tuple:
-    #     raise NotImplementedError
+        self.mate_point_array: Type[np.ndarray, None] = None
 
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         raise NotImplementedError
@@ -121,6 +144,12 @@ class Anchor(Anchorable):
 
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_marker, ]
+
+    def get_min_max_values(self) -> Tuple:
+        return self.point, self.point, self.point, self.point
+
+    def get_min_max_values_normalized_to_origin(self) -> Tuple:
+        return 0, 0, 0, 0
 
     def __add__(self, other):
         return Anchor(self.point + other.point)
@@ -166,17 +195,17 @@ class Circle(Anchorable, BarMateSlide):
                 self.exp_const * self.rotation_frequency * base_points_list.point_list)
 
     def update_drawing_objects(self, frame) -> None:
+        # MAIN
         self.main_circle_edge_artist.set_center(
             (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
         self.main_centre2point_line_artist.set_data(
             [self.parent.point_array[frame].real, self.point_array[frame].real],  # x
             [self.parent.point_array[frame].imag, self.point_array[frame].imag])  # y
 
-        self.secondary_circle_edge_artist.set_center(
-            (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
+        # SECONDARY
         self.secondary_centre2point_line_artist.set_data(
-            [self.parent.point_array[frame].real, self.point_array[frame].real],  # x
-            [self.parent.point_array[frame].imag, self.point_array[frame].imag])  # y
+            [0, self.point_array[frame].real - self.parent.point_array[frame].real],  # x
+            [0, self.point_array[frame].imag - self.parent.point_array[frame].imag])  # y
 
     def get_main_drawing_objects(self) -> List:
         return [self.main_circle_edge_artist, self.main_centre2point_line_artist]
@@ -184,38 +213,45 @@ class Circle(Anchorable, BarMateSlide):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_circle_edge_artist, self.secondary_centre2point_line_artist]
 
+    def get_min_max_values(self) -> Tuple:
+        x_min = min(self.point_array[:].real)
+        x_max = max(self.point_array[:].real)
 
-def __str__(self):
-    return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
+        y_min = min(self.point_array[:].imag)
+        y_max = max(self.point_array[:].imag)
+
+        return x_min, x_max, y_min, y_max
+
+    def get_min_max_values_normalized_to_origin(self) -> Tuple:
+        x_max = self.radius/2
+        x_min = -1 * x_max
+
+        y_max = x_max
+        y_min = x_min
+
+        return x_min, x_max, y_min, y_max
+
+    def __str__(self):
+        return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
 
 
 class Bar(Anchorable, BarMateFix):
 
-    def __init__(self, parent_object, child_length_from_parent, mate_object, mate_length_from_parent):
+    def __init__(self, parent_object, point_length_from_parent, mate_object, mate_length_from_parent):
         super().__init__()
         self.parent: Type[Anchorable] = parent_object
         self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
-        self.child_length = child_length_from_parent
+        self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
 
-    """
-    def get_point(self, time_step: float):
-        parent = self.parent.get_point(time_step)
+        """
+        Drawing Objects
+        """
+        self.main_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
+        self.main_point_line = plt.Line2D([], [], marker='o', markevery=(1, 1))
 
-        if isinstance(self.mate, BarMateFix):
-            mate_parent, mate_length = self.mate.get_data_for_circle_intersections(time_step)
-
-            mate = get_circles_intersections(parent.real, parent.imag, self.mate_length,
-                                             mate_parent.real, mate_parent.imag, mate_length)
-            
-        elif isinstance(self.mate, BarMateSlide):
-            mate = self.mate.get_point(time_step)
-
-        mate_parent_diff = mate - parent
-        angle = phase(mate_parent_diff)
-
-        return parent + (self.child_length * exp(angle * 1j))
-    """
+        self.secondary_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
+        self.secondary_point_line = plt.Line2D([], [], marker='o', markevery=(1, 1))
 
     def get_parent_points(self, base_points_list: RotationResolution) -> None:
         self.parent.create_point_lists(base_points_list)
@@ -233,7 +269,64 @@ class Bar(Anchorable, BarMateFix):
                 self.mate_point_array = self.parent.point_array
 
             self.point_array = self.parent.point_array + (
-                    self.child_length * math.exp(cmath.phase(self.mate_point_array - self.parent.point_array) * 1j))
+                    self.point_length * math.exp(cmath.phase(self.mate_point_array - self.parent.point_array) * 1j))
+
+    def update_drawing_objects(self, frame) -> None:
+        # MAIN
+        self.main_mate_line.set_data(
+            [self.parent.point_array[frame].real, self.mate_point_array[frame].real],
+            [self.parent.point_array[frame].imag, self.mate_point_array[frame].imag]
+        )
+        self.main_point_line.set_data(
+            [self.parent.point_array[frame].real, self.point_array[frame].real],
+            [self.parent.point_array[frame].imag, self.point_array[frame].imag]
+        )
+
+        # SECONDARY
+        self.secondary_mate_line.set_data(
+            [0, self.mate_point_array[frame].real - self.parent.point_array[frame].real],
+            [0, self.mate_point_array[frame].imag - self.parent.point_array[frame].imag]
+        )
+        self.secondary_point_line.set_data(
+            [0, self.point_array[frame].real - self.parent.point_array[frame].real],
+            [0, self.point_array[frame].imag - self.parent.point_array[frame].imag]
+        )
+
+    def get_main_drawing_objects(self) -> List:
+        return [self.main_point_line, self.main_mate_line]
+
+    def get_secondary_drawing_objects(self) -> List:
+        return [self.secondary_point_line, self.secondary_mate_line]
+
+    def get_min_max_values(self) -> Tuple:
+        x_min = min(itertools.chain(self.point_array[:].real, self.mate_point_array[:].real))
+        x_max = max(itertools.chain(self.point_array[:].real, self.mate_point_array[:].real))
+
+        y_min = min(itertools.chain(self.point_array[:].imag, self.mate_point_array[:].imag))
+        y_max = max(itertools.chain(self.point_array[:].imag, self.mate_point_array[:].imag))
+
+        return x_min, x_max, y_min, y_max
+
+    def get_min_max_values_normalized_to_origin(self) -> Tuple:
+        x_min = min(itertools.chain(
+            self.point_array[:].real - self.parent.point_array[:].real,
+            self.mate_point_array[:].real  - self.parent.point_array[:].real
+        ))
+        x_max = max(itertools.chain(
+            self.point_array[:].real  - self.parent.point_array[:].real,
+            self.mate_point_array[:].real - self.parent.point_array[:].real
+        ))
+
+        y_min = min(itertools.chain(
+            self.point_array[:].imag  - self.parent.point_array[:].imag,
+            self.mate_point_array[:].imag  - self.parent.point_array[:].imag
+        ))
+        y_max = max(itertools.chain(
+            self.point_array[:].imag  - self.parent.point_array[:].imag,
+            self.mate_point_array[:].imag  - self.parent.point_array[:].imag
+        ))
+
+        return x_min, x_max, y_min, y_max
 
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         if self.mate_point_array is None:
@@ -280,68 +373,84 @@ class Bar(Anchorable, BarMateFix):
 
 
 def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *components: Anchorable):
+    """Create point list for drawer and all subcomponents"""
     drawer.create_point_lists(resolution_obj)
 
-    # comp_artist_list = drawer.get_drawing_objects()
-    drawer_artist_list = drawer.get_main_drawing_objects()
-    comp_artist_list = []
     for comp in components:
         comp.create_point_lists(resolution_obj)
-        comp_artist_list.extend(comp.get_main_drawing_objects())
 
+    """Get mpl.artist objects for main drawing"""
+    main_plot_drawer_artist_list = drawer.get_main_drawing_objects()
+    main_plot_component_artist_list = []
+
+    for comp in components:
+        main_plot_component_artist_list.extend(comp.get_main_drawing_objects())
+
+    """ Create basic figure and axes """
     fig = plt.figure(figsize=(21, 13))
-    x_min = min(drawer.point_array.real)
-    x_max = max(drawer.point_array.real)
-    y_min = min(drawer.point_array.imag)
-    y_max = max(drawer.point_array.imag)
 
-    gs_parent = gridspec.GridSpec(1, 2, figure=fig)
-    num_of_rows = 4
-    num_of_seperate_plot_columns = int(math.ceil(len(components) / num_of_rows))
-    gs_comp_plots = gridspec.GridSpecFromSubplotSpec(num_of_rows, num_of_seperate_plot_columns,
+    gs_parent_num_of_rows = 1
+    gs_parent_num_of_cols = 2
+    gs_parent = gridspec.GridSpec(gs_parent_num_of_rows, gs_parent_num_of_cols, figure=fig)
+
+    num_of_component_plot_rows = 4
+    num_of_component_plot_cols = int(math.ceil(len(components) / num_of_component_plot_rows))
+
+    print(f'plot component_col: {num_of_component_plot_cols}')
+
+    gs_component_plots = gridspec.GridSpecFromSubplotSpec(num_of_component_plot_rows, num_of_component_plot_cols,
                                                      subplot_spec=gs_parent[0])
-    gs_main_plots = gridspec.GridSpecFromSubplotSpec(num_of_rows, 2, subplot_spec=gs_parent[1])
 
-    main_draw_ax = fig.add_subplot(gs_main_plots[:, 0])
-    main_final_shape_ax = fig.add_subplot(gs_main_plots[:, 1])
+    gs_main_plot_num_of_rows = 1
+    gs_main_plot_num_of_cols = 2
+    gs_main_plots = gridspec.GridSpecFromSubplotSpec(gs_main_plot_num_of_rows, gs_main_plot_num_of_cols, subplot_spec=gs_parent[1])
+
+    main_animated_draw_axis = fig.add_subplot(gs_main_plots[:, 0])
+    main_final_shape_axis = fig.add_subplot(gs_main_plots[:, 1])
+
+    """ min/max for main drawer axes """
+    drawer_x_min, drawer_x_max, drawer_y_min, drawer_y_max = drawer.get_min_max_values()
+    axis_space_buffer = 1
 
     # set xy limits for final drawing axes
-    main_draw_ax.set_xlim((x_min - 1, x_max + 1))
-    main_draw_ax.set_ylim((y_min - 1, y_max + 1))
+    main_animated_draw_axis.set_xlim((drawer_x_min - axis_space_buffer, drawer_x_max + axis_space_buffer))
+    main_animated_draw_axis.set_ylim((drawer_y_min - axis_space_buffer, drawer_y_max + axis_space_buffer))
 
-    main_final_shape_ax.set_xlim((x_min - 1, x_max + 1))
-    main_final_shape_ax.set_ylim((y_min - 1, y_max + 1))
+    main_final_shape_axis.set_xlim((drawer_x_min - axis_space_buffer, drawer_x_max + axis_space_buffer))
+    main_final_shape_axis.set_ylim((drawer_y_min - axis_space_buffer, drawer_y_max + axis_space_buffer))
 
     # set axis aspect ratio for final drawing axes
-    main_draw_ax.set_aspect('equal')
-    main_final_shape_ax.set_aspect('equal')
+    main_animated_draw_axis.set_aspect('equal')
+    main_final_shape_axis.set_aspect('equal')
 
-    final_line, = main_draw_ax.plot([], [])
-    # finished_final_line, = main_final_shape_ax.plot(drawer.point_array.real, drawer.point_array.imag)
-    main_final_shape_ax.plot(drawer.point_array.real, drawer.point_array.imag)
+    main_animated_drawer_final_line, = main_animated_draw_axis.plot([], [])
+    # finished_final_line, = main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
+    main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
 
     comp_axis_list = []
     comp_axis_artist_list = []
     comp_axis_artist_list_list = []
 
-    #TODO get secondary comp axes to senter on parent and not move around in frame.
-    # either by changes axis
-    # or recentering data on the origin
-
     for num, comp in enumerate(components):
-        col = int(math.floor(num / num_of_rows))
-        row = num % num_of_rows
+        component_col = int(math.floor(num / num_of_component_plot_rows))
+        component_row = num % num_of_component_plot_rows
 
-        x_min = min(comp.point_array.real)
-        x_max = max(comp.point_array.real)
-        y_min = min(comp.point_array.imag)
-        y_max = max(comp.point_array.imag)
+        component_x_min = min(comp.point_array.real)
+        component_x_max = max(comp.point_array.real)
+        component_y_min = min(comp.point_array.imag)
+        component_y_max = max(comp.point_array.imag)
 
-        temp_ax = fig.add_subplot(gs_comp_plots[row, col])
-        temp_ax.set_xlim((x_min - 1, x_max + 1))
-        temp_ax.set_ylim((y_min - 1, y_max + 1))
+        # circ_max = (comp.radius / 2) + 0.6
+        # circ_min = -1 * circ_max
+
+        temp_ax = fig.add_subplot(gs_component_plots[component_row, component_col])
+        temp_ax.set_xlim((component_x_min, component_x_max))
+        temp_ax.set_ylim((component_y_min, component_y_max))
         temp_ax.set_aspect('equal')
 
+
+        # TODO do I need all these lists?
+        # Does all this stuff need tobe in INIT?
         comp_axis_list.append(temp_ax)
 
         comp_axis_artist_list_list.append(comp.get_secondary_drawing_objects())
@@ -350,16 +459,17 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
     # individual components
 
     def init():
-        for artist in itertools.chain(drawer_artist_list, comp_artist_list):
-            main_draw_ax.add_artist(artist)
-        # ax.add_artist(c2)
+        for artist in itertools.chain(main_plot_drawer_artist_list, main_plot_component_artist_list):
+            main_animated_draw_axis.add_artist(artist)
+
         for i, artist_list in enumerate(comp_axis_artist_list_list):
             for artist in artist_list:
                 comp_axis_list[i].add_artist(artist)
 
-        return itertools.chain([final_line], drawer_artist_list, comp_artist_list, comp_axis_artist_list)
-        # return itertools.chain([final_line], drawer_artist_list, comp_artist_list)
-        return [final_line]
+        return itertools.chain([main_animated_drawer_final_line], main_plot_drawer_artist_list, main_plot_component_artist_list,
+                               comp_axis_artist_list)
+        # return itertools.chain([main_animated_drawer_final_line], main_plot_drawer_artist_list, main_plot_component_artist_list)
+        # return [main_animated_drawer_final_line]
 
     def get_frames():
         for i in range(drawer.point_array.size):
@@ -374,10 +484,10 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         for anchorable_obj in components:
             anchorable_obj.update_drawing_objects(frame)
         # frame = frame - 1
-        final_line.set_data(drawer.point_array[:frame + 1].real, drawer.point_array[:frame + 1].imag)
+        main_animated_drawer_final_line.set_data(drawer.point_array[:frame + 1].real, drawer.point_array[:frame + 1].imag)
 
-        for axis in comp_axis_list:
-            axis.set
+        # for axis in comp_axis_list:
+        # axis.set
         # drawer_marker.set_data(drawer.point_array[frame].real, drawer.point_array[frame].imag)
         # dl1.set_data([drawer.parent.point_array[frame].real, drawer.point_array[frame].real],
         #              [drawer.parent.point_array[frame].imag, drawer.point_array[frame].imag])
@@ -387,9 +497,10 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         # l1.set_data([supports[2].parent.point_array[frame].real, supports[2].point_array[frame].real],
         #             [supports[2].parent.point_array[frame].imag, supports[2].point_array[frame].imag])
 
-        return itertools.chain([final_line], drawer_artist_list, comp_artist_list, comp_axis_artist_list)
-        # return itertools.chain([final_line], drawer_artist_list, comp_artist_list)
-        # return [final_line]
+        return itertools.chain([main_animated_drawer_final_line], main_plot_drawer_artist_list, main_plot_component_artist_list,
+                               comp_axis_artist_list)
+        # return itertools.chain([main_animated_drawer_final_line], main_plot_drawer_artist_list, main_plot_component_artist_list)
+        # return [main_animated_drawer_final_line]
 
     mpl_animation.FuncAnimation(fig, animate,
                                 init_func=init,
@@ -415,7 +526,8 @@ base_points = RotationResolution(rotations=5)
 # animate_all(circle2, base_points, anchor1, circle1)
 # animate_all(circle3, base_points, anchor1, circle1, circle2)
 # animate_all(circle4, base_points, anchor1, circle1, circle2, circle3)
-animate_all(circle5, base_points, anchor1, circle1, circle2, circle3, circle4)
+# animate_all(circle5, base_points, circle1, circle2, circle3, circle4)
+animate_all(circle5, base_points, circle1, circle2, circle3)
 """
 x2 = x0 + a * (x1 - x0) / d
 y2 = y0 + a * (y1 - y0) / d
