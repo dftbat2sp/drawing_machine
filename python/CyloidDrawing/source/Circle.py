@@ -307,6 +307,8 @@ class Bar(Anchorable, BarMateFix):
 
         return x_min, x_max, y_min, y_max
 
+    # TODO
+    # should parent be normalized or another point? MATE?
     def get_min_max_values_normalized_to_origin(self) -> Tuple:
         x_min = min(itertools.chain(
             self.point_array[:].real - self.parent.point_array[:].real,
