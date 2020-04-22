@@ -495,11 +495,36 @@ plt.show()
 # print(get_intercetions(2,-1.5,3,-2,1.5,4))
 # print(get_intercetions(-2,1.5,3,2,-1.5,4))
 """
-
+"""
 import itertools
 import numpy as np
-l1 = np.array([1,2,3,4,5])
-l2 = np.array([2,3,4,5,6])
+l1 = np.array([1 + 1j,2 + 1j,3 + 1j,4 + 1j,5 + 3j])
+l2 = np.array([2 + 1j,3 + 1j,4 + 1j,5 + 4j,6 + 1j])
 
-print(max(itertools.chain(l1,l2)))
+point_list_real = [l1.real, l2.real]
+point_list_imag = [l1.imag, l2.imag]
+
+print(max(itertools.chain.from_iterable(point_list_real)))
+print(max(itertools.chain.from_iterable(point_list_imag)))
 # print(max(l1, l2))
+"""
+
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+
+widths = [2, 3, 1.5]
+heights = [1, 3, 2]
+
+gs_kw = dict(width_ratios=widths, height_ratios=heights)
+fig6, f6_axes = plt.subplots(ncols=3, nrows=3, constrained_layout=True,
+                             gridspec_kw=gs_kw)
+
+fig6.set_size_inches(10,10)
+for r, row in enumerate(f6_axes):
+    for c, ax in enumerate(row):
+        label = 'Width: {}\nHeight: {}'.format(widths[c], heights[r])
+        ax.annotate(label, (0.1, 0.5), xycoords='axes fraction', va='center')
+        ax.set_aspect('equal')
+
+plt.show()
