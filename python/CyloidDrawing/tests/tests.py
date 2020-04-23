@@ -508,7 +508,7 @@ print(max(itertools.chain.from_iterable(point_list_real)))
 print(max(itertools.chain.from_iterable(point_list_imag)))
 # print(max(l1, l2))
 """
-
+"""
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -528,3 +528,22 @@ for r, row in enumerate(f6_axes):
         ax.set_aspect('equal')
 
 plt.show()
+"""
+
+import numpy as np
+
+parent_point_array = np.array([1 + 1j])
+mate_point_array = np.array([1 - 1j])
+
+point_length = 1
+arm_length = 1
+arm_angle = -np.pi / 4
+
+bar_point_array = parent_point_array + (point_length * np.exp(np.angle(mate_point_array - parent_point_array) * 1j)) + (
+            arm_length * np.exp(arm_angle * 1j))
+
+print(bar_point_array)
+
+bar_arm_point_array = bar_point_array + (arm_length * np.exp(arm_angle * 1j))
+
+print(bar_arm_point_array)

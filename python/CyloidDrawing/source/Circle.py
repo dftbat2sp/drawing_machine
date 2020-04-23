@@ -122,7 +122,7 @@ class BarMateFix:
         raise NotImplementedError
 
 
-class Anchor(Anchorable):
+class Anchor(Anchorable, BarMateSlide):
 
     def __init__(self, complex_number: complex = 0 + 0j):
         super().__init__()
@@ -186,10 +186,10 @@ class Circle(Anchorable, BarMateSlide):
         Drawing Objects
         """
         self.main_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
-        self.main_centre2point_line_artist = plt.Line2D([], [], marker='o', markevery=(1, 1))
+        self.main_centre2point_line_artist = plt.Line2D([], [], marker='.', markevery=(1, 1))
 
         self.secondary_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
-        self.secondary_centre2point_line_artist = plt.Line2D([], [], marker='o', markevery=(1, 1))
+        self.secondary_centre2point_line_artist = plt.Line2D([], [], marker='.', markevery=(1, 1))
 
         super().__init__()
 
@@ -244,24 +244,36 @@ class Circle(Anchorable, BarMateSlide):
 class Bar(Anchorable, BarMateFix):
 
     def __init__(self,
-                 parent_object: Anchorable,
+                 parent_object: Type[Anchorable],
                  point_length_from_parent: float,
-                 mate_object: Anchorable,
-                 mate_length_from_parent: float = 0):
+                 mate_object: Type[Union[Anchorable, BarMateSlide, BarMateFix]],
+                 mate_length_from_parent: float = 0,
+                 arm_length: float = 0,
+                 arm_angle: float = -np.pi / 2,
+                 deg: bool = False):
+
         super().__init__()
         self.parent: Type[Anchorable] = parent_object
         self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
         self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
+        self.arm_length: float = arm_length
+        self.arm_angle: float = arm_angle
+        if deg:
+            self.arm_angle = np.radians(self.arm_angle)
+
+        self.pre_arm_point_array: Type[np.ndarray, None] = None
 
         """
         Drawing Objects
         """
         self.main_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
-        self.main_point_line = plt.Line2D([], [], marker='o', markevery=(1, 1))
+        self.main_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
+        self.main_arm_line = plt.Line2D([], [], marker='.', markevery=(1, 1))
 
         self.secondary_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
-        self.secondary_point_line = plt.Line2D([], [], marker='o', markevery=(1, 1))
+        self.secondary_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
+        self.secondary_arm_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
 
     def get_parent_points(self, base_points_list: RotationResolution) -> None:
         self.parent.create_point_lists(base_points_list)
@@ -278,15 +290,12 @@ class Bar(Anchorable, BarMateFix):
                 self.mate.create_point_lists(base_points_list)
                 self.mate_point_array = self.mate.point_array
 
-            print(f'p.pa: {self.parent.point_array}')
-            print(f'pl: {self.point_length}')
-            print(f'mpa:{self.mate_point_array}')
-            print(f'p.pa:{self.parent.point_array}')
-
             # test = np.angle(self.mate_point_array - self.parent.point_array) * 1j
 
-            self.point_array = self.parent.point_array + (
+            self.pre_arm_point_array = self.parent.point_array + (
                     self.point_length * np.exp(np.angle(self.mate_point_array - self.parent.point_array) * 1j))
+
+            self.point_array = self.pre_arm_point_array + (self.arm_length * np.exp(self.arm_angle * 1j))
             # self.point_length * np.exp(cmath.phase(self.mate_point_array - self.parent.point_array) * 1j))
 
     def update_drawing_objects(self, frame) -> None:
@@ -295,9 +304,13 @@ class Bar(Anchorable, BarMateFix):
             [self.parent.point_array[frame].real, self.mate_point_array[frame].real],
             [self.parent.point_array[frame].imag, self.mate_point_array[frame].imag]
         )
-        self.main_point_line.set_data(
-            [self.parent.point_array[frame].real, self.point_array[frame].real],
-            [self.parent.point_array[frame].imag, self.point_array[frame].imag]
+        self.main_pre_arm_point_line.set_data(
+            [self.parent.point_array[frame].real, self.pre_arm_point_array[frame].real],
+            [self.parent.point_array[frame].imag, self.pre_arm_point_array[frame].imag]
+        )
+        self.main_arm_line.set_data(
+            [self.pre_arm_point_array[frame].real, self.point_array[frame].real],
+            [self.pre_arm_point_array[frame].imag, self.point_array[frame].imag],
         )
 
         # SECONDARY
@@ -305,16 +318,22 @@ class Bar(Anchorable, BarMateFix):
             [0, self.mate_point_array[frame].real - self.parent.point_array[frame].real],
             [0, self.mate_point_array[frame].imag - self.parent.point_array[frame].imag]
         )
-        self.secondary_point_line.set_data(
-            [0, self.point_array[frame].real - self.parent.point_array[frame].real],
-            [0, self.point_array[frame].imag - self.parent.point_array[frame].imag]
+        self.secondary_pre_arm_point_line.set_data(
+            [0, self.pre_arm_point_array[frame].real - self.parent.point_array[frame].real],
+            [0, self.pre_arm_point_array[frame].imag - self.parent.point_array[frame].imag]
+        )
+        self.secondary_arm_line.set_data(
+            [self.pre_arm_point_array[frame].real - self.parent.point_array[frame].real,
+             self.point_array[frame].real - self.parent.point_array[frame].real],
+            [self.pre_arm_point_array[frame].imag - self.parent.point_array[frame].imag,
+             self.point_array[frame].imag - self.parent.point_array[frame].imag],
         )
 
     def get_main_drawing_objects(self) -> List:
-        return [self.main_point_line, self.main_mate_line]
+        return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line]
 
     def get_secondary_drawing_objects(self) -> List:
-        return [self.secondary_point_line, self.secondary_mate_line]
+        return [self.secondary_pre_arm_point_line, self.secondary_mate_line, self.secondary_arm_line]
 
     def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
 
@@ -323,8 +342,11 @@ class Bar(Anchorable, BarMateFix):
         if not point_array_only:
             real_list.append(self.mate_point_array[:].real)
             real_list.append(self.parent.point_array[:].real)
+            real_list.append(self.pre_arm_point_array[:].real)
+
             imag_list.append(self.mate_point_array[:].imag)
             imag_list.append(self.parent.point_array[:].imag)
+            imag_list.append(self.pre_arm_point_array[:].imag)
 
         x_min = min(itertools.chain.from_iterable(real_list)) - buffer
         x_max = max(itertools.chain.from_iterable(real_list)) + buffer
@@ -338,14 +360,22 @@ class Bar(Anchorable, BarMateFix):
     # should parent be normalized or another point? MATE?
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         x_min = min(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
-                                    self.mate_point_array[:].real - self.parent.point_array[:].real)) - buffer
+                                    self.mate_point_array[:].real - self.parent.point_array[:].real,
+                                    self.pre_arm_point_array[:].real - self.parent.point_array[:].real,
+                                    [0])) - buffer
         x_max = max(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
-                                    self.mate_point_array[:].real - self.parent.point_array[:].real)) + buffer
+                                    self.mate_point_array[:].real - self.parent.point_array[:].real,
+                                    self.pre_arm_point_array[:].real - self.parent.point_array[:].real,
+                                    [0])) + buffer
 
         y_min = min(itertools.chain(self.point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag)) - buffer
+                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag,
+                                    self.pre_arm_point_array[:].imag - self.parent.point_array[:].imag,
+                                    [0])) - buffer
         y_max = max(itertools.chain(self.point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag)) + buffer
+                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag,
+                                    self.pre_arm_point_array[:].imag - self.parent.point_array[:].imag,
+                                    [0])) + buffer
 
         return x_min, x_max, y_min, y_max
 
@@ -408,7 +438,7 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         main_plot_component_artist_list.extend(comp.get_main_drawing_objects())
 
     """ Create basic figure and axes """
-    fig = plt.figure(figsize=(21, 14))
+    fig = plt.figure(figsize=(21, 13))
 
     gs_parent_num_of_rows = 1
     gs_parent_num_of_cols = 2
@@ -479,6 +509,10 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
 
     fig.tight_layout()
 
+    def on_q(event):
+        if event.key == 'q':
+            exit()
+
     def init():
         for artist in itertools.chain(main_plot_drawer_artist_list, main_plot_component_artist_list):
             main_animated_draw_axis.add_artist(artist)
@@ -507,6 +541,8 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         return itertools.chain([main_animated_drawer_final_line], main_plot_drawer_artist_list,
                                main_plot_component_artist_list,
                                comp_axis_artist_list)
+
+    cid = fig.canvas.mpl_connect('key_press_event', on_q)
 
     mpl_animation.FuncAnimation(fig, animate,
                                 init_func=init,
@@ -550,12 +586,16 @@ animate_all(bar1, base_points, circle1, circle2)
 
 base_points = RotationResolution(rotations=10, step_size=0.0005)
 
-circle1 = Circle(1.2, 16)
-circle2 = Circle(0.8, 10, parent_object=circle1)
+circle1 = Circle(1.2, 8)
+circle2 = Circle(0.8, 2, parent_object=circle1)
+# circle3 = Circle(0.3, 20, parent_object=circle2)
+# anchor4 = Anchor(-3 - 1j)
+
+# bar4 = Bar(circle3, 6, anchor4)
 
 # circle1_2 = Circle(1.3,1.2, starting_angle=np.pi +0.3)
 # bar1 = Bar(circle2, 0.8, circle1_2)
-animate_all(circle2, base_points, circle1)
+animate_all(circle2, base_points, circle1, circle2)
 
 """
 x2 = x0 + a * (x1 - x0) / d
@@ -652,7 +692,7 @@ ax = pyplot.axes(xlim=(min_x - extra_width, max_x + extra_width), ylim=(min_y - 
 ax.set_aspect('equal')
 
 line, = ax.plot([], [])
-mark, = ax.plot([], [], marker='o', markersize=3, color='r')
+mark, = ax.plot([], [], marker='.', markersize=3, color='r')
 
 b3 = PointList(c1, res, rot)
 b4 = PointList(c2, res, rot)
@@ -667,9 +707,9 @@ c2_x = [i.real for i in c2_points]
 c2_y = [i.imag for i in c2_points]
 
 c1_line, = ax.plot([], [])
-c1_mark, = ax.plot([], [], marker='o', markersize=3, color='b')
+c1_mark, = ax.plot([], [], marker='.', markersize=3, color='b')
 c2_line, = ax.plot([], [])
-c2_mark, = ax.plot([], [], marker='o', markersize=3, color='g')
+c2_mark, = ax.plot([], [], marker='.', markersize=3, color='g')
 
 myline, = ax.plot([], [])
 
