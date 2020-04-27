@@ -113,7 +113,7 @@ class BarMateSlide:
 class BarMateFix:
 
     def __init__(self):
-        self.mate_point_array: Type[np.ndarray, None] = None
+        self.mate_point_array: Type[Union[np.ndarray, None]] = None
 
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         raise NotImplementedError
@@ -165,7 +165,7 @@ class Circle(Anchorable, BarMateSlide):
                  frequency: float,
                  starting_angle: float = 0,
                  deg: bool = False,
-                 parent_object: Anchorable = Anchor(0 + 0j)):
+                 parent: Anchorable = Anchor(0 + 0j)):
         # circle defined by C * exp( 2*pi*j * freq * resolution_ticker )
         # C = length * exp( starting_angle * j )
         self.rotation_frequency: float = frequency
@@ -180,7 +180,7 @@ class Circle(Anchorable, BarMateSlide):
         # constant
         self.length_starting_angle: complex = self.radius * cmath.exp(self.starting_angle * 1j)
 
-        self.parent: Anchorable = parent_object
+        self.parent: Anchorable = parent
 
         """
         Drawing Objects
@@ -244,7 +244,7 @@ class Circle(Anchorable, BarMateSlide):
 class Bar(Anchorable, BarMateFix):
 
     def __init__(self,
-                 parent_object: Type[Anchorable],
+                 parent: Type[Anchorable],
                  point_length_from_parent: float,
                  mate_object: Type[Union[Anchorable, BarMateSlide, BarMateFix]],
                  mate_length_from_parent: float = 0,
@@ -253,12 +253,13 @@ class Bar(Anchorable, BarMateFix):
                  deg: bool = False):
 
         super().__init__()
-        self.parent: Type[Anchorable] = parent_object
+        self.parent: Type[Anchorable] = parent
         self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
         self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
         self.arm_length: float = arm_length
         self.arm_angle: float = arm_angle
+        self.mate_point_array = None
         if deg:
             self.arm_angle = np.radians(self.arm_angle)
 
@@ -270,6 +271,7 @@ class Bar(Anchorable, BarMateFix):
         self.main_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
         self.main_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
         self.main_arm_line = plt.Line2D([], [], marker='.', markevery=(1, 1))
+        self.mate_intersection_circle = plt.Circle((0, 0), self.mate_length, fill=False)
 
         self.secondary_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
         self.secondary_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
@@ -295,7 +297,8 @@ class Bar(Anchorable, BarMateFix):
             self.pre_arm_point_array = self.parent.point_array + (
                     self.point_length * np.exp(np.angle(self.mate_point_array - self.parent.point_array) * 1j))
 
-            self.point_array = self.pre_arm_point_array + (self.arm_length * np.exp(self.arm_angle * 1j))
+            self.point_array = self.pre_arm_point_array + (self.arm_length * np.exp(
+                (np.angle(self.mate_point_array - self.parent.point_array) + self.arm_angle) * 1j))
             # self.point_length * np.exp(cmath.phase(self.mate_point_array - self.parent.point_array) * 1j))
 
     def update_drawing_objects(self, frame) -> None:
@@ -312,6 +315,9 @@ class Bar(Anchorable, BarMateFix):
             [self.pre_arm_point_array[frame].real, self.point_array[frame].real],
             [self.pre_arm_point_array[frame].imag, self.point_array[frame].imag],
         )
+
+        self.mate_intersection_circle.set_center(
+            (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
 
         # SECONDARY
         self.secondary_mate_line.set_data(
@@ -330,7 +336,7 @@ class Bar(Anchorable, BarMateFix):
         )
 
     def get_main_drawing_objects(self) -> List:
-        return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line]
+        return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line, self.mate_intersection_circle]
 
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_pre_arm_point_line, self.secondary_mate_line, self.secondary_arm_line]
@@ -379,13 +385,42 @@ class Bar(Anchorable, BarMateFix):
 
         return x_min, x_max, y_min, y_max
 
+    # TODO fix circle choice (x3,y3) vs (x4,y) so that cross beam all point and and not OUT IN
+
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         if self.mate_point_array is None:
             self.mate.get_parent_points(base_points_list)
 
+            x0 = self.parent.point_array.real
+            y0 = self.parent.point_array.imag
+            r0 = self.mate_length
+
+            x1 = self.mate.parent.point_array.real
+            y1 = self.mate.parent.point_array.imag
+            r1 = self.mate.mate_length
+
+            d = np.sqrt(np.power(x1 - x0, 2) + np.power(y1 - y0, 2))
+
+            a = (np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2)) / (2 * d)
+            h = np.sqrt(np.power(r0, 2) - np.power(a, 2))
+
+            x2 = x0 + (a * (x1 - x0)) / d
+            y2 = y0 + (a * (y1 - y0)) / d
+
+            x3 = x2 + (h * (y1 - y0)) / d
+            y3 = y2 - (h * (x1 - x0)) / d
+
+            x4 = x2 - (h * (y1 - y0)) / d
+            y4 = y2 + (h * (x1 - x0)) / d
+
+            self.mate_point_array = x3 + (y3 *1j)
+            self.mate.mate_point_array = self.mate_point_array
+
+
+            """
             d: np.ndarray = np.sqrt(
                 np.power((self.parent.point_array.real - self.mate.parent.point_array.real), 2) +
-                np.sqrt(np.power((self.parent.point_array.imag - self.mate.parent.point_array.imag), 2)))
+                np.power((self.parent.point_array.imag - self.mate.parent.point_array.imag), 2))
 
             if (d > (self.mate_length + self.mate.mate_length)).any():
                 raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
@@ -395,30 +430,40 @@ class Bar(Anchorable, BarMateFix):
                 raise IntersectionError(f'Concentric circles.')
             else:
                 """
-                # doing the below calc in fewer varialbes to save on memory
-                a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
-                h = sqrt(r0 ** 2 - a ** 2)
-                x2 = x0 + a * (x1 - x0) / d
-                y2 = y0 + a * (y1 - y0) / d
-                x3 = x2 + h * (y1 - y0) / d
-                y3 = y2 - h * (x1 - x0) / d
-                """
-                # these variables kept out of larger equation for ease of reading and deduplicate processing the equation multiple times
-                a = (np.power(self.mate_length, 2) - np.power(self.mate.mate_length, 2) + np.power(d, 2)) / (2 * d)
-                h = np.sqrt(np.power(self.mate_length, 2) - np.power(a, 2))
+            # doing the below calc in fewer varialbes to save on memory
+            # a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
+            # h = sqrt(r0 ** 2 - a ** 2)
+            # x2 = x0 + a * (x1 - x0) / d
+            # y2 = y0 + a * (y1 - y0) / d
+            # x3 = x2 + h * (y1 - y0) / d
+            # y3 = y2 - h * (x1 - x0) / d
+            """
+            # these variables kept out of larger equation for ease of reading and deduplicate processing the equation multiple times
+            a = (np.power(self.mate.mate_length, 2) - np.power(self.mate_length, 2) + np.power(d, 2)) / (2 * d)
+            h = np.sqrt(np.power(self.mate.mate_length, 2) - np.power(a, 2))
 
-                # @formatter:off
-                self.mate_point_array = (
-                    (self.parent.point_array.real + (a * (
-                            self.mate.parent.point_array.real - self.parent.point_array.real) / d)) + (
-                        h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)
-                        ) + (1j * (
-                    (self.parent.point_array.imag + (a * (
-                            self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)) - (
-                        h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)))
-                # @formatter:on
+            # @formatter:off
+            self.mate_point_array = (
+                (self.parent.point_array.real + (a * (
+                        self.parent.point_array.real - self.mate.parent.point_array.real) / d)) - (
+                    h * (self.parent.point_array.imag - self.mate.parent.point_array.imag) / d)
+                    ) + (
+                1j * (
+                (self.parent.point_array.imag + (a * (
+                        self.parent.point_array.imag - self.mate.parent.point_array.imag) / d)) + (
+                    h * (self.parent.point_array.real - self.mate.parent.point_array.real) / d)))
+            # (self.parent.point_array.real + (a * (
+            #         self.mate.parent.point_array.real - self.parent.point_array.real) / d)) + (
+            #         h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)
+            # ) + (1j * (
+            #         (self.parent.point_array.imag + (a * (
+            #                 self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)) - (
+            #                 h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)))
+            # @formatter:on    
+            """
 
-                self.mate.mate_point_array = self.mate_point_array
+            self.mate.mate_point_array = self.mate_point_array
+
         elif self.mate.mate_point_array is None:
             self.mate.mate_point_array = self.mate_point_array
 
@@ -584,18 +629,49 @@ base_points = RotationResolution(rotations=5)
 animate_all(bar1, base_points, circle1, circle2)
 """
 
-base_points = RotationResolution(rotations=10, step_size=0.0005)
-
-circle1 = Circle(1.2, 8)
-circle2 = Circle(0.8, 2, parent_object=circle1)
+base_points = RotationResolution(rotations=0.1, step_size=0.0005)
+# anchor2 = Anchor(4+0j)
+# circle1 = Circle(0.6, 8)
+# circle2 = Circle(0.8, 2, parent_object=anchor2)
 # circle3 = Circle(0.3, 20, parent_object=circle2)
 # anchor4 = Anchor(-3 - 1j)
 
-# bar4 = Bar(circle3, 6, anchor4)
+# center_rotation = -10/24
+
+anchor1 = Anchor(-4)
+anchor2 = Anchor(4)
+# drive_circle1 = Circle(2, 10/13, parent=anchor1)
+# drive_circle2 = Circle(2, 10/17, parent=anchor2)
+rotation_circle1 = Circle(3, 1, starting_angle=0)
+rotation_circle2 = Circle(3, 1, starting_angle=np.pi)
+drive_circle1 = Circle(2, 1 / 13, parent=rotation_circle1, starting_angle=np.pi)
+drive_circle2 = Circle(2, 1 / 17, parent=rotation_circle2)
+bar1_1 = Bar(drive_circle1, 11, None, mate_length_from_parent=6)
+bar1_2 = Bar(drive_circle2, 11, bar1_1, mate_length_from_parent=6)
+bar1_1.mate = bar1_2
+
+bar2_1 = Bar(bar1_1, 5, None, mate_length_from_parent=5)
+bar2_2 = Bar(bar1_2, 5, bar2_1, mate_length_from_parent=5)
+bar2_1.mate = bar2_2
+
+animate_all(bar2_2, base_points, drive_circle1, drive_circle2, bar1_1, bar1_2, bar2_2, bar2_1 )
+# animate_all(bar1_2, base_points, drive_circle1, drive_circle2, bar1_1, bar1_2)
+
+# centercircle = Circle(3, center_rotation)
+# driver_anchor_circle = Circle(0.9, 4 / 27, parent=centercircle)
+# fulcrum_anchor_circle = Circle(4.0, center_rotation, starting_angle=2 * np.pi * (70 / 100))
+# fulcrum_circle = Circle(0.9, -5 / 3, parent=fulcrum_anchor_circle)
+# bar1 = Bar(driver_anchor_circle, 1.8, fulcrum_circle, arm_length=0.9, arm_angle=2 * np.pi * (-25 / 100))
+# bar1 = Bar(fulcrum_circle, 1.8, driver_anchor_circle, arm_length=1.2, arm_angle=2 * np.pi * (13 / 100))
+# bar1 = Bar(outercircle, 1.6, anchor_circle, arm_length=1, arm_angle=-np.pi / 2)
+
+# bar4 = Bar(circle1, 6, circle2, arm_length=0.3, arm_angle=-np.pi/2)
+# circle5 = Circle(0.2, 14, parent_object=bar4)
 
 # circle1_2 = Circle(1.3,1.2, starting_angle=np.pi +0.3)
 # bar1 = Bar(circle2, 0.8, circle1_2)
-animate_all(circle2, base_points, circle1, circle2)
+# animate_all(outercircle, base_points, outercircle, centercircle)
+# animate_all(bar1, base_points, driver_anchor_circle, centercircle, fulcrum_anchor_circle, bar1, fulcrum_circle)
 
 """
 x2 = x0 + a * (x1 - x0) / d

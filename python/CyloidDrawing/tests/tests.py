@@ -532,18 +532,20 @@ plt.show()
 
 import numpy as np
 
-parent_point_array = np.array([1 + 1j])
-mate_point_array = np.array([1 - 1j])
+parent_point_array = np.array([1 + 0j])
+mate_point_array = np.array([-1 + 0j])
 
 point_length = 1
 arm_length = 1
-arm_angle = -np.pi / 4
+arm_angle = -np.pi / 2
+
+print(np.angle(mate_point_array - parent_point_array) )
 
 bar_point_array = parent_point_array + (point_length * np.exp(np.angle(mate_point_array - parent_point_array) * 1j)) + (
-            arm_length * np.exp(arm_angle * 1j))
+        arm_length * np.exp((np.angle(mate_point_array - parent_point_array) + arm_angle) * 1j))
 
 print(bar_point_array)
 
-bar_arm_point_array = bar_point_array + (arm_length * np.exp(arm_angle * 1j))
+# bar_arm_point_array = bar_point_array + (arm_length * np.exp(arm_angle * 1j))
 
-print(bar_arm_point_array)
+# print(bar_arm_point_array)
