@@ -616,8 +616,8 @@ circle5 = Circle(0.2, 0.01, starting_angle=1, parent_object=circle4)
 anchor1 = Anchor(-2 - 1j)
 anchor2 = Anchor(1 + 2j)
 
-circle1 = Circle(0.5, 1.2, parent_object=anchor1)
-circle2 = Circle(0.6, 1.23, parent_object=anchor2)
+circle1 = Circle(0.5, 1.2, parent=anchor1)
+circle2 = Circle(0.6, 1.23, parent=anchor2)
 
 bar1 = Bar(circle1, 6, circle2)
 
@@ -632,6 +632,28 @@ base_points = RotationResolution(rotations=5)
 animate_all(bar1, base_points, circle1, circle2)
 """
 
+base_points = RotationResolution(rotations=10, step_size=0.0005)
+# 150 / 100
+# middle_rotation = 120 / 100
+middle_rotation = 3/2
+outer_rotation = 84/8
+
+circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
+# circle_middle_circle = Circle(3, middle_rotation, starting_angle=-2*np.pi*(1/8))
+circle_middle_anchor = Circle(4, middle_rotation, starting_angle=2*np.pi*(4/8))
+
+# circle_outside = Circle(1, middle_rotation, parent=circle_middle_circle)
+circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
+
+# bar_draw = Bar(circle_outside, 2.2, circle_middle_anchor, arm_angle=-np.pi/2, arm_length=2)
+# bar_draw = Bar(circle_middle_anchor, 3, circle_outside, arm_angle=np.pi/2, arm_length=0.2)
+
+# animate_all(bar_draw, base_points, circle_middle_circle, circle_outside)
+animate_all(circle_outside, base_points, circle_middle_anchor, circle_middle_circle, circle_outside)
+
+
+
+"""
 base_points = RotationResolution(rotations=5, step_size=0.0001)
 # anchor2 = Anchor(4+0j)
 # circle1 = Circle(0.6, 8)
@@ -658,7 +680,8 @@ bar2_1 = Bar(bar1_1, 6, None, mate_length_from_parent=6)
 bar2_2 = Bar(bar1_2, 6, bar2_1, mate_length_from_parent=6)
 bar2_1.mate = bar2_2
 
-animate_all(bar2_2, base_points, anchor1, anchor2, drive_circle1, drive_circle2, bar1_1, bar1_2, bar2_1)
+animate_all(bar2_2, base_points)
+"""
 """
 x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
 y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
