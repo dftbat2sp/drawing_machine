@@ -65,7 +65,7 @@ class Anchorable:
 
     def __init__(self):
         self.point_array: Type[np.ndarray, None] = None
-        self.list_calculated = False
+        # self.list_calculated = False
 
     def create_point_lists(self, base_points_list: RotationResolution) -> None:
         raise NotImplementedError
@@ -254,7 +254,7 @@ class Bar(Anchorable, BarMateFix):
 
         super().__init__()
         self.parent: Type[Anchorable] = parent
-        self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
+        self.mate: Type[Union[Anchorable, BarMateSlide, BarMateFix]] = mate_object
         self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
         self.arm_length: float = arm_length
@@ -363,8 +363,7 @@ class Bar(Anchorable, BarMateFix):
 
         return x_min, x_max, y_min, y_max
 
-    # TODO
-    # should parent be normalized or another point? MATE?
+    # ? should parent be normalized or another point? MATE?
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         x_min = min(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
                                     self.mate_point_array[:].real - self.parent.point_array[:].real,
@@ -385,8 +384,6 @@ class Bar(Anchorable, BarMateFix):
                                     [0])) + buffer
 
         return x_min, x_max, y_min, y_max
-
-    # TODO fix circle choice (x3,y3) vs (x4,y) so that cross beam all point and and not OUT IN
 
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         if self.mate_point_array is None:
@@ -462,7 +459,7 @@ class Bar(Anchorable, BarMateFix):
             #         (self.parent.point_array.imag + (a * (
             #                 self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)) - (
             #                 h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)))
-            # @formatter:on    
+            # @formatter:on
             """
 
             self.mate.mate_point_array = self.mate_point_array
@@ -470,8 +467,13 @@ class Bar(Anchorable, BarMateFix):
         elif self.mate.mate_point_array is None:
             self.mate.mate_point_array = self.mate_point_array
 
+def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
+    pass
+    
+    
+    
 
-def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *components: Anchorable):
+def animate_all(drawer: Type[Anchorable], resolution_obj: RotationResolution, *components: Type[Anchorable]):
     """Create point list for drawer and all subcomponents"""
     drawer.create_point_lists(resolution_obj)
 
@@ -533,7 +535,7 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
     # finished_final_line, = main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
     main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
 
-    """ What's going on here? """
+    # ? What's going on here?
     comp_axis_artist_list = []
     individual_axis_space_buffer = 0.5
 
@@ -601,6 +603,14 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
                                 repeat=False)
 
     plt.show()
+
+
+# TODO
+# ? Change Animate_all to automatically animate children
+# ? is there a better way to chain elements together?
+# ?     maybe make a way to build common objects easier
+# ? bar needs a better way of connecting two bars together.
+
 
 
 """ Draw """
