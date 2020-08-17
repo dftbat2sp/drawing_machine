@@ -66,7 +66,7 @@ class Anchorable:
 
     def __init__(self):
         self.point_array: Type[np.ndarray, None] = None
-        self.list_calculated = False
+        # self.list_calculated = False
 
     def create_point_lists(self, base_points_list: RotationResolution) -> None:
         raise NotImplementedError
@@ -265,7 +265,7 @@ class Bar(Anchorable, BarMateFix):
 
         super().__init__()
         self.parent: Type[Anchorable] = parent
-        self.mate: Type[Anchorable, BarMateSlide, BarMateFix] = mate_object
+        self.mate: Type[Union[Anchorable, BarMateSlide, BarMateFix]] = mate_object
         self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
         self.arm_length: float = arm_length
@@ -388,8 +388,7 @@ class Bar(Anchorable, BarMateFix):
 
         return x_min, x_max, y_min, y_max
 
-    # TODO
-    # should parent be normalized or another point? MATE?
+    # ? should parent be normalized or another point? MATE?
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         x_min = min(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
                                     self.mate_point_array[:].real -
@@ -418,8 +417,6 @@ class Bar(Anchorable, BarMateFix):
                                     [0])) + buffer
 
         return x_min, x_max, y_min, y_max
-
-    # TODO fix circle choice (x3,y3) vs (x4,y) so that cross beam all point and and not OUT IN
 
     def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
         if self.mate_point_array is None:
@@ -495,7 +492,7 @@ class Bar(Anchorable, BarMateFix):
             #         (self.parent.point_array.imag + (a * (
             #                 self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)) - (
             #                 h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)))
-            # @formatter:on    
+            # @formatter:on
             """
 
             self.mate.mate_point_array = self.mate_point_array
@@ -503,8 +500,13 @@ class Bar(Anchorable, BarMateFix):
         elif self.mate.mate_point_array is None:
             self.mate.mate_point_array = self.mate_point_array
 
+def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
+    pass
+    
+    
+    
 
-def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *components: Anchorable):
+def animate_all(drawer: Type[Anchorable], resolution_obj: RotationResolution, *components: Type[Anchorable]):
     """Create point list for drawer and all subcomponents"""
     drawer.create_point_lists(resolution_obj)
 
@@ -571,7 +573,7 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
     main_final_shape_axis.plot(
         drawer.point_array.real, drawer.point_array.imag)
 
-    """ What's going on here? """
+    # ? What's going on here?
     comp_axis_artist_list = []
     individual_axis_space_buffer = 0.5
 
@@ -642,6 +644,14 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
     plt.show()
 
 
+# TODO
+# ? Change Animate_all to automatically animate children
+# ? is there a better way to chain elements together?
+# ?     maybe make a way to build common objects easier
+# ? bar needs a better way of connecting two bars together.
+
+
+
 """ Draw """
 """
 anchor1 = Anchor(1 + 1j)
@@ -655,8 +665,8 @@ circle5 = Circle(0.2, 0.01, starting_angle=1, parent_object=circle4)
 anchor1 = Anchor(-2 - 1j)
 anchor2 = Anchor(1 + 2j)
 
-circle1 = Circle(0.5, 1.2, parent_object=anchor1)
-circle2 = Circle(0.6, 1.23, parent_object=anchor2)
+circle1 = Circle(0.5, 1.2, parent=anchor1)
+circle2 = Circle(0.6, 1.23, parent=anchor2)
 
 bar1 = Bar(circle1, 6, circle2)
 
@@ -671,31 +681,27 @@ base_points = RotationResolution(rotations=5)
 animate_all(bar1, base_points, circle1, circle2)
 """
 
-base_points = RotationResolution(rotations=5, step_size=0.0001)
-# anchor2 = Anchor(4+0j)
-# circle1 = Circle(0.6, 8)
-# circle2 = Circle(0.8, 2, parent_object=anchor2)
-# circle3 = Circle(0.3, 20, parent_object=circle2)
-# anchor4 = Anchor(-3 - 1j)
+base_points = RotationResolution(rotations=10, step_size=0.0005)
+# 150 / 100
+# middle_rotation = 120 / 100
+middle_rotation = 3/2
+outer_rotation = 84/8
 
-# center_rotation = -10/24
+circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
+# circle_middle_circle = Circle(3, middle_rotation, starting_angle=-2*np.pi*(1/8))
+circle_middle_anchor = Circle(4, middle_rotation, starting_angle=2*np.pi*(4/8))
 
-anchor1 = Anchor(-4)
-anchor2 = Anchor(4)
-drive_circle1 = Circle(3, 0.5, parent=anchor1)
-drive_circle2 = Circle(0.5, 113, parent=anchor2)
-# rotation_circle1 = Circle(3, 0.1, starting_angle=0)  # right
-# rotation_circle2 = Circle(3, 0.1, starting_angle=np.pi)  # left
-# drive_circle1 = Circle(2, 1 / 13, parent=rotation_circle1, starting_angle=np.pi)
-# drive_circle2 = Circle(2, 1 / 17, parent=rotation_circle2)
-bar1_1 = Bar(drive_circle1, 11, None, mate_length_from_parent=6)  # right
-bar1_2 = Bar(drive_circle2, 11, None, mate_length_from_parent=6)  # left
-bar1_2.mate = bar1_1
-bar1_1.mate = bar1_2
+# circle_outside = Circle(1, middle_rotation, parent=circle_middle_circle)
+circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
 
-bar2_1 = Bar(bar1_1, 6, None, mate_length_from_parent=6)
-bar2_2 = Bar(bar1_2, 6, bar2_1, mate_length_from_parent=6)
-bar2_1.mate = bar2_2
+# bar_draw = Bar(circle_outside, 2.2, circle_middle_anchor, arm_angle=-np.pi/2, arm_length=2)
+# bar_draw = Bar(circle_middle_anchor, 3, circle_outside, arm_angle=np.pi/2, arm_length=0.2)
+
+# animate_all(bar_draw, base_points, circle_middle_circle, circle_outside)
+animate_all(circle_outside, base_points, circle_middle_anchor, circle_middle_circle, circle_outside)
+
+
+
 """
 x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
 y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
