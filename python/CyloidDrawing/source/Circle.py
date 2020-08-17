@@ -58,7 +58,8 @@ class RotationResolution:
     def __post_init__(self):
         self.num_of_points: int = int(self.rotations / self.step_size)
         self.rotation_to_radians: float = self.rotations * math.tau
-        self.point_list: np.ndarray = np.linspace(0, self.rotation_to_radians, self.num_of_points)
+        self.point_list: np.ndarray = np.linspace(
+            0, self.rotation_to_radians, self.num_of_points)
 
 
 class Anchorable:
@@ -131,11 +132,14 @@ class Anchor(Anchorable, BarMateSlide):
         """
         Drawing Objects
         """
-        self.main_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
-        self.secondary_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
+        self.main_marker = plt.Line2D(
+            [self.point.real], [self.point.imag], marker="^")
+        self.secondary_marker = plt.Line2D(
+            [self.point.real], [self.point.imag], marker="^")
 
     def create_point_lists(self, base_points_list: RotationResolution):
-        self.point_array = np.full_like(base_points_list.point_list, self.point, dtype=complex)
+        self.point_array = np.full_like(
+            base_points_list.point_list, self.point, dtype=complex)
         # self.point_array = self.point
 
     def update_drawing_objects(self, frame) -> None:
@@ -178,18 +182,23 @@ class Circle(Anchorable, BarMateSlide):
             self.starting_angle: float = math.radians(starting_angle)
 
         # constant
-        self.length_starting_angle: complex = self.radius * cmath.exp(self.starting_angle * 1j)
+        self.length_starting_angle: complex = self.radius * \
+            cmath.exp(self.starting_angle * 1j)
 
         self.parent: Anchorable = parent
 
         """
         Drawing Objects
         """
-        self.main_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
-        self.main_centre2point_line_artist = plt.Line2D([], [], marker='.', markevery=(1, 1))
+        self.main_circle_edge_artist = plt.Circle(
+            (0, 0), self.radius, fill=False)
+        self.main_centre2point_line_artist = plt.Line2D(
+            [], [], marker='.', markevery=(1, 1))
 
-        self.secondary_circle_edge_artist = plt.Circle((0, 0), self.radius, fill=False)
-        self.secondary_centre2point_line_artist = plt.Line2D([], [], marker='.', markevery=(1, 1))
+        self.secondary_circle_edge_artist = plt.Circle(
+            (0, 0), self.radius, fill=False)
+        self.secondary_centre2point_line_artist = plt.Line2D(
+            [], [], marker='.', markevery=(1, 1))
 
         super().__init__()
 
@@ -205,12 +214,14 @@ class Circle(Anchorable, BarMateSlide):
         self.main_circle_edge_artist.set_center(
             (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
         self.main_centre2point_line_artist.set_data(
-            [self.parent.point_array[frame].real, self.point_array[frame].real],  # x
+            [self.parent.point_array[frame].real,
+                self.point_array[frame].real],  # x
             [self.parent.point_array[frame].imag, self.point_array[frame].imag])  # y
 
         # SECONDARY
         self.secondary_centre2point_line_artist.set_data(
-            [0, self.point_array[frame].real - self.parent.point_array[frame].real],  # x
+            [0, self.point_array[frame].real -
+                self.parent.point_array[frame].real],  # x
             [0, self.point_array[frame].imag - self.parent.point_array[frame].imag])  # y
 
     def get_main_drawing_objects(self) -> List:
@@ -268,14 +279,20 @@ class Bar(Anchorable, BarMateFix):
         """
         Drawing Objects
         """
-        self.main_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
-        self.main_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
+        self.main_mate_line = plt.Line2D(
+            [], [], marker='D', markevery=(1, 1), linestyle='--')
+        self.main_pre_arm_point_line = plt.Line2D(
+            [], [], marker='x', markevery=(1, 1))
         self.main_arm_line = plt.Line2D([], [], marker='.', markevery=(1, 1))
-        self.mate_intersection_circle = plt.Circle((0, 0), self.mate_length, fill=False)
+        self.mate_intersection_circle = plt.Circle(
+            (0, 0), self.mate_length, fill=False)
 
-        self.secondary_mate_line = plt.Line2D([], [], marker='D', markevery=(1, 1), linestyle='--')
-        self.secondary_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
-        self.secondary_arm_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
+        self.secondary_mate_line = plt.Line2D(
+            [], [], marker='D', markevery=(1, 1), linestyle='--')
+        self.secondary_pre_arm_point_line = plt.Line2D(
+            [], [], marker='x', markevery=(1, 1))
+        self.secondary_arm_line = plt.Line2D(
+            [], [], marker='x', markevery=(1, 1))
 
     def get_parent_points(self, base_points_list: RotationResolution) -> None:
         self.parent.create_point_lists(base_points_list)
@@ -295,7 +312,7 @@ class Bar(Anchorable, BarMateFix):
             # test = np.angle(self.mate_point_array - self.parent.point_array) * 1j
 
             self.pre_arm_point_array = self.parent.point_array + (
-                    self.point_length * np.exp(np.angle(self.mate_point_array - self.parent.point_array) * 1j))
+                self.point_length * np.exp(np.angle(self.mate_point_array - self.parent.point_array) * 1j))
 
             self.point_array = self.pre_arm_point_array + (self.arm_length * np.exp(
                 (np.angle(self.mate_point_array - self.parent.point_array) + self.arm_angle) * 1j))
@@ -304,29 +321,37 @@ class Bar(Anchorable, BarMateFix):
     def update_drawing_objects(self, frame) -> None:
         # MAIN
         self.main_mate_line.set_data(
-            [self.parent.point_array[frame].real, self.mate_point_array[frame].real],
-            [self.parent.point_array[frame].imag, self.mate_point_array[frame].imag]
+            [self.parent.point_array[frame].real,
+                self.mate_point_array[frame].real],
+            [self.parent.point_array[frame].imag,
+                self.mate_point_array[frame].imag]
         )
         self.main_pre_arm_point_line.set_data(
-            [self.parent.point_array[frame].real, self.pre_arm_point_array[frame].real],
-            [self.parent.point_array[frame].imag, self.pre_arm_point_array[frame].imag]
+            [self.parent.point_array[frame].real,
+                self.pre_arm_point_array[frame].real],
+            [self.parent.point_array[frame].imag,
+                self.pre_arm_point_array[frame].imag]
         )
         self.main_arm_line.set_data(
             [self.pre_arm_point_array[frame].real, self.point_array[frame].real],
             [self.pre_arm_point_array[frame].imag, self.point_array[frame].imag],
         )
 
-        self.mate_intersection_circle.set_center(
-            (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
+        # self.mate_intersection_circle.set_center(
+        #     (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
 
         # SECONDARY
         self.secondary_mate_line.set_data(
-            [0, self.mate_point_array[frame].real - self.parent.point_array[frame].real],
-            [0, self.mate_point_array[frame].imag - self.parent.point_array[frame].imag]
+            [0, self.mate_point_array[frame].real -
+                self.parent.point_array[frame].real],
+            [0, self.mate_point_array[frame].imag -
+                self.parent.point_array[frame].imag]
         )
         self.secondary_pre_arm_point_line.set_data(
-            [0, self.pre_arm_point_array[frame].real - self.parent.point_array[frame].real],
-            [0, self.pre_arm_point_array[frame].imag - self.parent.point_array[frame].imag]
+            [0, self.pre_arm_point_array[frame].real -
+                self.parent.point_array[frame].real],
+            [0, self.pre_arm_point_array[frame].imag -
+                self.parent.point_array[frame].imag]
         )
         self.secondary_arm_line.set_data(
             [self.pre_arm_point_array[frame].real - self.parent.point_array[frame].real,
@@ -336,7 +361,8 @@ class Bar(Anchorable, BarMateFix):
         )
 
     def get_main_drawing_objects(self) -> List:
-        return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line, self.mate_intersection_circle]
+        # return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line, self.mate_intersection_circle]
+        return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line]
 
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_pre_arm_point_line, self.secondary_mate_line, self.secondary_arm_line]
@@ -366,21 +392,29 @@ class Bar(Anchorable, BarMateFix):
     # should parent be normalized or another point? MATE?
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         x_min = min(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
-                                    self.mate_point_array[:].real - self.parent.point_array[:].real,
-                                    self.pre_arm_point_array[:].real - self.parent.point_array[:].real,
+                                    self.mate_point_array[:].real -
+                                    self.parent.point_array[:].real,
+                                    self.pre_arm_point_array[:].real -
+                                    self.parent.point_array[:].real,
                                     [0])) - buffer
         x_max = max(itertools.chain(self.point_array[:].real - self.parent.point_array[:].real,
-                                    self.mate_point_array[:].real - self.parent.point_array[:].real,
-                                    self.pre_arm_point_array[:].real - self.parent.point_array[:].real,
+                                    self.mate_point_array[:].real -
+                                    self.parent.point_array[:].real,
+                                    self.pre_arm_point_array[:].real -
+                                    self.parent.point_array[:].real,
                                     [0])) + buffer
 
         y_min = min(itertools.chain(self.point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.pre_arm_point_array[:].imag - self.parent.point_array[:].imag,
+                                    self.mate_point_array[:].imag -
+                                    self.parent.point_array[:].imag,
+                                    self.pre_arm_point_array[:].imag -
+                                    self.parent.point_array[:].imag,
                                     [0])) - buffer
         y_max = max(itertools.chain(self.point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.mate_point_array[:].imag - self.parent.point_array[:].imag,
-                                    self.pre_arm_point_array[:].imag - self.parent.point_array[:].imag,
+                                    self.mate_point_array[:].imag -
+                                    self.parent.point_array[:].imag,
+                                    self.pre_arm_point_array[:].imag -
+                                    self.parent.point_array[:].imag,
                                     [0])) + buffer
 
         return x_min, x_max, y_min, y_max
@@ -399,6 +433,9 @@ class Bar(Anchorable, BarMateFix):
             y1 = self.mate.parent.point_array.imag
             r1 = self.mate.mate_length
 
+            if x0[0] > x1[0]:
+                x0, y0, r0, x1, y1, r1 = x1, y1, r1, x0, y0, r0
+
             d = np.sqrt(np.power(x1 - x0, 2) + np.power(y1 - y0, 2))
 
             a = (np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2)) / (2 * d)
@@ -413,9 +450,8 @@ class Bar(Anchorable, BarMateFix):
             x4 = x2 - (h * (y1 - y0)) / d
             y4 = y2 + (h * (x1 - x0)) / d
 
-            self.mate_point_array = x3 + (y3 *1j)
+            self.mate_point_array = x4 + (y4 * 1j)
             self.mate.mate_point_array = self.mate_point_array
-
 
             """
             d: np.ndarray = np.sqrt(
@@ -487,10 +523,12 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
 
     gs_parent_num_of_rows = 1
     gs_parent_num_of_cols = 2
-    gs_parent = gridspec.GridSpec(gs_parent_num_of_rows, gs_parent_num_of_cols, figure=fig)
+    gs_parent = gridspec.GridSpec(
+        gs_parent_num_of_rows, gs_parent_num_of_cols, figure=fig)
 
     num_of_component_plot_rows = 2
-    num_of_component_plot_cols = int(math.ceil(len(components) / num_of_component_plot_rows))
+    num_of_component_plot_cols = int(
+        math.ceil(len(components) / num_of_component_plot_rows))
 
     print(f'plot component_col: {num_of_component_plot_cols}')
 
@@ -516,8 +554,10 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         point_array_only=True)
 
     # set xy limits for final drawing axes
-    main_animated_draw_axis.set_xlim((animated_drawer_x_min, animated_drawer_x_max))
-    main_animated_draw_axis.set_ylim((animated_drawer_y_min, animated_drawer_y_max))
+    main_animated_draw_axis.set_xlim(
+        (animated_drawer_x_min, animated_drawer_x_max))
+    main_animated_draw_axis.set_ylim(
+        (animated_drawer_y_min, animated_drawer_y_max))
 
     main_final_shape_axis.set_xlim((final_drawer_x_min, final_drawer_x_max))
     main_final_shape_axis.set_ylim((final_drawer_y_min, final_drawer_y_max))
@@ -528,7 +568,8 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
 
     main_animated_drawer_final_line, = main_animated_draw_axis.plot([], [])
     # finished_final_line, = main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
-    main_final_shape_axis.plot(drawer.point_array.real, drawer.point_array.imag)
+    main_final_shape_axis.plot(
+        drawer.point_array.real, drawer.point_array.imag)
 
     """ What's going on here? """
     comp_axis_artist_list = []
@@ -541,7 +582,8 @@ def animate_all(drawer: Anchorable, resolution_obj: RotationResolution, *compone
         component_x_min, component_x_max, component_y_min, component_y_max = comp.get_min_max_values_normalized_to_origin(
             buffer=individual_axis_space_buffer)
 
-        temp_ax = fig.add_subplot(gs_component_plots[component_row, component_col])
+        temp_ax = fig.add_subplot(
+            gs_component_plots[component_row, component_col])
         temp_ax.set_xlim((component_x_min, component_x_max))
         temp_ax.set_ylim((component_y_min, component_y_max))
         temp_ax.set_aspect('equal')
@@ -629,7 +671,7 @@ base_points = RotationResolution(rotations=5)
 animate_all(bar1, base_points, circle1, circle2)
 """
 
-base_points = RotationResolution(rotations=0.1, step_size=0.0005)
+base_points = RotationResolution(rotations=5, step_size=0.0001)
 # anchor2 = Anchor(4+0j)
 # circle1 = Circle(0.6, 8)
 # circle2 = Circle(0.8, 2, parent_object=anchor2)
@@ -640,48 +682,21 @@ base_points = RotationResolution(rotations=0.1, step_size=0.0005)
 
 anchor1 = Anchor(-4)
 anchor2 = Anchor(4)
-# drive_circle1 = Circle(2, 10/13, parent=anchor1)
-# drive_circle2 = Circle(2, 10/17, parent=anchor2)
-rotation_circle1 = Circle(3, 1, starting_angle=0)
-rotation_circle2 = Circle(3, 1, starting_angle=np.pi)
-drive_circle1 = Circle(2, 1 / 13, parent=rotation_circle1, starting_angle=np.pi)
-drive_circle2 = Circle(2, 1 / 17, parent=rotation_circle2)
-bar1_1 = Bar(drive_circle1, 11, None, mate_length_from_parent=6)
-bar1_2 = Bar(drive_circle2, 11, bar1_1, mate_length_from_parent=6)
+drive_circle1 = Circle(3, 0.5, parent=anchor1)
+drive_circle2 = Circle(0.5, 113, parent=anchor2)
+# rotation_circle1 = Circle(3, 0.1, starting_angle=0)  # right
+# rotation_circle2 = Circle(3, 0.1, starting_angle=np.pi)  # left
+# drive_circle1 = Circle(2, 1 / 13, parent=rotation_circle1, starting_angle=np.pi)
+# drive_circle2 = Circle(2, 1 / 17, parent=rotation_circle2)
+bar1_1 = Bar(drive_circle1, 11, None, mate_length_from_parent=6)  # right
+bar1_2 = Bar(drive_circle2, 11, None, mate_length_from_parent=6)  # left
+bar1_2.mate = bar1_1
 bar1_1.mate = bar1_2
 
-bar2_1 = Bar(bar1_1, 5, None, mate_length_from_parent=5)
-bar2_2 = Bar(bar1_2, 5, bar2_1, mate_length_from_parent=5)
+bar2_1 = Bar(bar1_1, 6, None, mate_length_from_parent=6)
+bar2_2 = Bar(bar1_2, 6, bar2_1, mate_length_from_parent=6)
 bar2_1.mate = bar2_2
-
-animate_all(bar2_2, base_points, drive_circle1, drive_circle2, bar1_1, bar1_2, bar2_2, bar2_1 )
-# animate_all(bar1_2, base_points, drive_circle1, drive_circle2, bar1_1, bar1_2)
-
-# centercircle = Circle(3, center_rotation)
-# driver_anchor_circle = Circle(0.9, 4 / 27, parent=centercircle)
-# fulcrum_anchor_circle = Circle(4.0, center_rotation, starting_angle=2 * np.pi * (70 / 100))
-# fulcrum_circle = Circle(0.9, -5 / 3, parent=fulcrum_anchor_circle)
-# bar1 = Bar(driver_anchor_circle, 1.8, fulcrum_circle, arm_length=0.9, arm_angle=2 * np.pi * (-25 / 100))
-# bar1 = Bar(fulcrum_circle, 1.8, driver_anchor_circle, arm_length=1.2, arm_angle=2 * np.pi * (13 / 100))
-# bar1 = Bar(outercircle, 1.6, anchor_circle, arm_length=1, arm_angle=-np.pi / 2)
-
-# bar4 = Bar(circle1, 6, circle2, arm_length=0.3, arm_angle=-np.pi/2)
-# circle5 = Circle(0.2, 14, parent_object=bar4)
-
-# circle1_2 = Circle(1.3,1.2, starting_angle=np.pi +0.3)
-# bar1 = Bar(circle2, 0.8, circle1_2)
-# animate_all(outercircle, base_points, outercircle, centercircle)
-# animate_all(bar1, base_points, driver_anchor_circle, centercircle, fulcrum_anchor_circle, bar1, fulcrum_circle)
-
 """
-x2 = x0 + a * (x1 - x0) / d
-y2 = y0 + a * (y1 - y0) / d
-
-x2 = (self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d))
-y2 = (self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d))
-x2 = self.parent.point_array.real + (a * (self.mate.parent.point_array.real - self.parent.point_array.real) / d)
-y2 = self.parent.point_array.imag + (a * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d)
-
 x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
 y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
 
