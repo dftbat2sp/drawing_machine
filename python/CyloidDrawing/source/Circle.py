@@ -13,6 +13,7 @@ import matplotlib.gridspec as gridspec
 class IntersectionError(Exception):
     pass
 
+
 # this is a test
 """
 def get_circles_intersections(x0, y0, r0, x1, y1, r1):
@@ -48,6 +49,10 @@ def get_circles_intersections(x0, y0, r0, x1, y1, r1):
 
         return x3 + y3 * 1j
 """
+
+
+def remove_duplicates_from_list(my_list):
+    return list(dict.fromkeys(my_list))
 
 
 @dataclass
@@ -106,6 +111,9 @@ class Anchorable:
         """
         raise NotImplementedError
 
+    def get_parent_tree(self) -> List:
+        raise NotImplementedError
+
 
 class BarMateSlide:
     pass
@@ -152,10 +160,13 @@ class Anchor(Anchorable, BarMateSlide):
         return [self.secondary_marker, ]
 
     def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
-        return self.point - buffer, self.point + buffer, self.point - buffer, self.point + buffer
+        return self.point.real - buffer, self.point.real + buffer, self.point.imag - buffer, self.point.imag + buffer
 
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         return 0 - buffer, 0 + buffer, 0 - buffer, 0 + buffer
+
+    def get_parent_tree(self) -> List:
+        return [self]
 
     def __add__(self, other):
         return Anchor(self.point + other.point)
@@ -248,6 +259,16 @@ class Circle(Anchorable, BarMateSlide):
 
         return x_min, x_max, y_min, y_max
 
+    def get_parent_tree(self) -> List:
+        # get list of parent heirarchy
+        parent_tree = self.parent.get_parent_tree()
+        # add self to list
+        parent_tree.append(self)
+        # filter list for duplicates
+        parent_tree = remove_duplicates_from_list(parent_tree)
+
+        return parent_tree
+
     def __str__(self):
         return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
 
@@ -265,7 +286,8 @@ class Bar(Anchorable, BarMateFix):
 
         super().__init__()
         self.parent: Type[Anchorable] = parent
-        self.mate: Type[Union[Anchorable, BarMateSlide, BarMateFix]] = mate_object
+        self.mate: Type[Union[Anchorable,
+                              BarMateSlide, BarMateFix]] = mate_object
         self.point_length = point_length_from_parent
         self.mate_length = mate_length_from_parent
         self.arm_length: float = arm_length
@@ -500,11 +522,126 @@ class Bar(Anchorable, BarMateFix):
         elif self.mate.mate_point_array is None:
             self.mate.mate_point_array = self.mate_point_array
 
+    def get_parent_tree(self) -> List:
+        # get parent's tree
+        parent_parent_tree = self.parent.get_parent_tree()
+        # get mate's tree
+        mate_parent_tree = self.mate.get_parent_tree()
+        # concatencate mate and parent tree lists
+        parent_tree = parent_parent_tree.extend(mate_parent_tree)
+        # add self to list
+        parent_tree.append(self)
+        # remove duplicate objects from list
+        parent_tree = remove_duplicates_from_list(parent_tree)
+
+        return parent_tree
+
+
 def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
-    pass
+    # get full parent tree of drawer (list of obj)
+    obj_needed_for_drawing = drawer.get_parent_tree()
     
-    
-    
+    # !TEMP
+    print(f'obj parent tree: {obj_needed_for_drawing}')
+
+    # calculate points needed to draw all objs
+    for obj in obj_needed_for_drawing:
+        obj.create_point_lists(resolution_obj)
+
+    # get artists for drawing on mpl figure
+    artist_list = []
+
+    for obj in obj_needed_for_drawing:
+        artist_list.extend(obj.get_main_drawing_objects())
+
+    # add figure and subplots to makes axes
+    fig = plt.figure()
+
+    animated_axes = fig.add_subplot(1, 2, 2)
+    animated_axes.set_aspect('equal')
+
+    static_final_axes = fig.add_subplot(1, 2, 1)
+    static_final_axes.set_aspect('equal')
+
+    fig.tight_layout()
+
+    # get xy limits for animated and final drawing axes
+    animated_x_min, animated_x_max, animated_y_min, animated_y_max = np.PINF, np.NINF, np.PINF, np.NINF
+
+    # animated axes
+    for obj in obj_needed_for_drawing:
+        temp_x_min, temp_x_max, temp_y_min, temp_y_max = obj.get_min_max_values(
+            buffer=1,
+            point_array_only=False
+        )
+        # !TEMP
+        # print(f'temp_x_min: {temp_x_min}')
+        # print(f'temp_x_max: {temp_x_max}')
+        # print(f'temp_y_min: {temp_y_min}')
+        # print(f'temp_y_max: {temp_y_max}')
+        animated_x_min = min(temp_x_min, animated_x_min)
+        animated_x_max = max(temp_x_max, animated_x_max)
+        animated_y_min = min(temp_y_min, animated_y_min)
+        animated_y_max = max(temp_y_max, animated_y_max)
+
+    # static final drawing axes
+    static_final_x_min, static_final_x_max, static_final_y_min, static_final_y_max = drawer.get_min_max_values(
+        buffer=1,
+        point_array_only=True
+    )
+
+    # set xy limits for animated and static axes
+    animated_axes.set_xlim((animated_x_min, animated_x_max))
+    animated_axes.set_ylim((animated_y_min, animated_y_max))
+
+    static_final_axes.set_xlim((static_final_x_min, static_final_x_max))
+    static_final_axes.set_ylim((static_final_y_min, static_final_y_max))
+
+    animated_final_line, = animated_axes.plot([], [])
+    static_final_axes.plot(drawer.point_array.real, drawer.point_array.imag)
+
+    def on_q(event):
+        if event.key == 'q':
+            exit()
+
+    def init():
+        for artist in itertools.chain(artist_list):
+            animated_axes.add_artist(artist)
+
+        animated_final_line.set_data([], [])
+        
+        # return itertools.chain([animated_final_line], artist_list)
+        return animated_final_line,
+
+    def get_frames():
+        for i in range(drawer.point_array.size):
+            point = i * 1
+            if point < drawer.point_array.size:
+                yield point
+
+    def animate(frame):
+
+        for obj in obj_needed_for_drawing:
+            obj.update_drawing_objects(frame)
+
+        animated_final_line.set_data(drawer.point_array[:frame + 1].real,
+                                     drawer.point_array[:frame + 1].imag)
+
+        # return itertools.chain([animated_final_line], artist_list)
+        return animated_final_line,
+
+    cid = fig.canvas.mpl_connect('key_press_event', on_q)
+
+    mpl_animation.FuncAnimation(fig,
+                                animate,
+                                init_func=init,
+                                interval=10,
+                                blit=True,
+                                frames=get_frames,
+                                repeat=False)
+
+    plt.show()
+
 
 def animate_all(drawer: Type[Anchorable], resolution_obj: RotationResolution, *components: Type[Anchorable]):
     """Create point list for drawer and all subcomponents"""
@@ -644,12 +781,24 @@ def animate_all(drawer: Type[Anchorable], resolution_obj: RotationResolution, *c
     plt.show()
 
 
+base_points = RotationResolution(rotations=10, step_size=0.0005)
+middle_rotation = 3/2
+outer_rotation = 84/8
+
+circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
+circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
+
+# !TEMP
+# print(f'cm: {circle_middle_circle}')
+# print(f'co: {circle_outside}')
+
+animate_full(circle_outside, base_points)
+
 # TODO
 # ? Change Animate_all to automatically animate children
 # ? is there a better way to chain elements together?
 # ?     maybe make a way to build common objects easier
 # ? bar needs a better way of connecting two bars together.
-
 
 
 """ Draw """
@@ -680,14 +829,15 @@ base_points = RotationResolution(rotations=5)
 # animate_all(circle5, base_points, circle1, circle2, circle3, circle4)
 animate_all(bar1, base_points, circle1, circle2)
 """
-
+"""
 base_points = RotationResolution(rotations=10, step_size=0.0005)
 # 150 / 100
 # middle_rotation = 120 / 100
 middle_rotation = 3/2
 outer_rotation = 84/8
 
-circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
+circle_middle_circle = Circle(
+    4, middle_rotation, starting_angle=-2*np.pi*(1/8))
 # circle_middle_circle = Circle(3, middle_rotation, starting_angle=-2*np.pi*(1/8))
 circle_middle_anchor = Circle(4, middle_rotation, starting_angle=2*np.pi*(4/8))
 
@@ -698,9 +848,9 @@ circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
 # bar_draw = Bar(circle_middle_anchor, 3, circle_outside, arm_angle=np.pi/2, arm_length=0.2)
 
 # animate_all(bar_draw, base_points, circle_middle_circle, circle_outside)
-animate_all(circle_outside, base_points, circle_middle_anchor, circle_middle_circle, circle_outside)
-
-
+animate_all(circle_outside, base_points, circle_middle_anchor,
+            circle_middle_circle, circle_outside)
+"""
 
 """
 x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
