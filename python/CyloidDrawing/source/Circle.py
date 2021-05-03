@@ -13,7 +13,6 @@ import matplotlib.gridspec as gridspec
 class IntersectionError(Exception):
     pass
 
-
 """
 def get_circles_intersections(x0, y0, r0, x1, y1, r1):
     # circle 1: (x0, y0), radius r0
@@ -49,7 +48,6 @@ def get_circles_intersections(x0, y0, r0, x1, y1, r1):
         return x3 + y3 * 1j
 """
 
-
 @dataclass
 class RotationResolution:
     step_size: float = 0.001
@@ -60,14 +58,13 @@ class RotationResolution:
         self.rotation_to_radians: float = self.rotations * math.tau
         self.point_list: np.ndarray = np.linspace(0, self.rotation_to_radians, self.num_of_points)
 
-
 class Anchorable:
 
     def __init__(self):
         self.point_array: Type[np.ndarray, None] = None
         # self.list_calculated = False
 
-    def create_point_lists(self, base_points_list: RotationResolution) -> None:
+    def create_point_lists(self, rotation_obj: RotationResolution) -> None:
         raise NotImplementedError
 
     def update_drawing_objects(self, frame) -> None:
@@ -104,23 +101,23 @@ class Anchorable:
             Maximum Y Value if parent was at origin
         """
         raise NotImplementedError
-
+    
+    def get_parent_tree(self):
+        raise NotImplementedError
 
 class BarMateSlide:
     pass
-
 
 class BarMateFix:
 
     def __init__(self):
         self.mate_point_array: Type[Union[np.ndarray, None]] = None
 
-    def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
+    def get_circle_intersection_with_mate(self, rotation_obj: RotationResolution) -> None:
         raise NotImplementedError
 
-    def get_parent_points(self, base_points_list: RotationResolution) -> None:
+    def get_parent_points(self, rotation_obj: RotationResolution) -> None:
         raise NotImplementedError
-
 
 class Anchor(Anchorable, BarMateSlide):
 
@@ -134,8 +131,8 @@ class Anchor(Anchorable, BarMateSlide):
         self.main_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
         self.secondary_marker = plt.Line2D([self.point.real], [self.point.imag], marker="^")
 
-    def create_point_lists(self, base_points_list: RotationResolution):
-        self.point_array = np.full_like(base_points_list.point_list, self.point, dtype=complex)
+    def create_point_lists(self, rotation_obj: RotationResolution):
+        self.point_array = np.full_like(rotation_obj.point_list, self.point, dtype=complex)
         # self.point_array = self.point
 
     def update_drawing_objects(self, frame) -> None:
@@ -153,8 +150,12 @@ class Anchor(Anchorable, BarMateSlide):
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         return 0 - buffer, 0 + buffer, 0 - buffer, 0 + buffer
 
+    def get_parent_tree(self):
+        return self
+
     def __add__(self, other):
         return Anchor(self.point + other.point)
+    
 
 
 class Circle(Anchorable, BarMateSlide):
@@ -193,12 +194,12 @@ class Circle(Anchorable, BarMateSlide):
 
         super().__init__()
 
-    def create_point_lists(self, base_points_list: RotationResolution) -> None:
+    def create_point_lists(self, rotation_obj: RotationResolution) -> None:
         if self.point_array is None:
-            self.parent.create_point_lists(base_points_list)
+            self.parent.create_point_lists(rotation_obj)
 
             self.point_array = self.parent.point_array + self.length_starting_angle * np.exp(
-                self.exp_const * self.rotation_frequency * base_points_list.point_list)
+                self.exp_const * self.rotation_frequency * rotation_obj.point_list)
 
     def update_drawing_objects(self, frame) -> None:
         # MAIN
@@ -236,6 +237,9 @@ class Circle(Anchorable, BarMateSlide):
         y_min = x_min
 
         return x_min, x_max, y_min, y_max
+
+    def get_parent_tree(self):
+        return super().get_parent_tree()
 
     def __str__(self):
         return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
@@ -277,19 +281,19 @@ class Bar(Anchorable, BarMateFix):
         self.secondary_pre_arm_point_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
         self.secondary_arm_line = plt.Line2D([], [], marker='x', markevery=(1, 1))
 
-    def get_parent_points(self, base_points_list: RotationResolution) -> None:
-        self.parent.create_point_lists(base_points_list)
+    def get_parent_points(self, rotation_obj: RotationResolution) -> None:
+        self.parent.create_point_lists(rotation_obj)
 
-    def create_point_lists(self, base_points_list: RotationResolution) -> None:
+    def create_point_lists(self, rotation_obj: RotationResolution) -> None:
         if self.point_array is None:
-            self.get_parent_points(base_points_list)
+            self.get_parent_points(rotation_obj)
 
             #  mate is a Mate Fix (such as a bar)
             if isinstance(self.mate, BarMateFix):
-                self.get_circle_intersection_with_mate(base_points_list)
+                self.get_circle_intersection_with_mate(rotation_obj)
             # mate is Mate Slide (such as a Circle)
             elif isinstance(self.mate, BarMateSlide):
-                self.mate.create_point_lists(base_points_list)
+                self.mate.create_point_lists(rotation_obj)
                 self.mate_point_array = self.mate.point_array
 
             # test = np.angle(self.mate_point_array - self.parent.point_array) * 1j
@@ -385,9 +389,9 @@ class Bar(Anchorable, BarMateFix):
 
         return x_min, x_max, y_min, y_max
 
-    def get_circle_intersection_with_mate(self, base_points_list: RotationResolution) -> None:
+    def get_circle_intersection_with_mate(self, rotation_obj: RotationResolution) -> None:
         if self.mate_point_array is None:
-            self.mate.get_parent_points(base_points_list)
+            self.mate.get_parent_points(rotation_obj)
 
             x0 = self.parent.point_array.real
             y0 = self.parent.point_array.imag
@@ -468,7 +472,8 @@ class Bar(Anchorable, BarMateFix):
             self.mate.mate_point_array = self.mate_point_array
 
 def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
-    pass
+    # get point list for main drawing object
+    drawer.create_point_lists(resolution_obj)
     
     
     
@@ -604,14 +609,22 @@ def animate_all(drawer: Type[Anchorable], resolution_obj: RotationResolution, *c
 
     plt.show()
 
+base_points = RotationResolution(rotations=10, step_size=0.0005)
+middle_rotation = 3/2
+outer_rotation = 84/8
+
+circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
+circle_middle_anchor = Circle(4, middle_rotation, starting_angle=2*np.pi*(4/8))
+
+circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
+
+animate_all(circle_outside, base_points, circle_middle_anchor, circle_middle_circle, circle_outside)
 
 # TODO
 # ? Change Animate_all to automatically animate children
 # ? is there a better way to chain elements together?
 # ?     maybe make a way to build common objects easier
 # ? bar needs a better way of connecting two bars together.
-
-
 
 """ Draw """
 """
@@ -641,27 +654,6 @@ base_points = RotationResolution(rotations=5)
 # animate_all(circle5, base_points, circle1, circle2, circle3, circle4)
 animate_all(bar1, base_points, circle1, circle2)
 """
-
-base_points = RotationResolution(rotations=10, step_size=0.0005)
-# 150 / 100
-# middle_rotation = 120 / 100
-middle_rotation = 3/2
-outer_rotation = 84/8
-
-circle_middle_circle = Circle(4, middle_rotation, starting_angle=-2*np.pi*(1/8))
-# circle_middle_circle = Circle(3, middle_rotation, starting_angle=-2*np.pi*(1/8))
-circle_middle_anchor = Circle(4, middle_rotation, starting_angle=2*np.pi*(4/8))
-
-# circle_outside = Circle(1, middle_rotation, parent=circle_middle_circle)
-circle_outside = Circle(2.5, outer_rotation, parent=circle_middle_circle)
-
-# bar_draw = Bar(circle_outside, 2.2, circle_middle_anchor, arm_angle=-np.pi/2, arm_length=2)
-# bar_draw = Bar(circle_middle_anchor, 3, circle_outside, arm_angle=np.pi/2, arm_length=0.2)
-
-# animate_all(bar_draw, base_points, circle_middle_circle, circle_outside)
-animate_all(circle_outside, base_points, circle_middle_anchor, circle_middle_circle, circle_outside)
-
-
 
 """
 base_points = RotationResolution(rotations=5, step_size=0.0001)
@@ -695,8 +687,6 @@ animate_all(bar2_2, base_points)
 """
 x3 = x2 + h * (self.mate.parent.point_array.imag - self.parent.point_array.imag) / d
 y3 = y2 - h * (self.mate.parent.point_array.real - self.parent.point_array.real) / d
-
-
 
 x3 = x2 + h * (
         y1 - y0) / d
