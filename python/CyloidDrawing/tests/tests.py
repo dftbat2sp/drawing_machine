@@ -1,3 +1,11 @@
+import numpy
+
+temp = numpy.inf
+temp2 = numpy.NINF
+other = 5
+
+print(min(other, temp))
+
 '''
 print(12.5 % 2.2)
 a = -50
@@ -529,7 +537,7 @@ for r, row in enumerate(f6_axes):
 
 plt.show()
 """
-
+"""
 import numpy as np
 
 parent_point_array = np.array([1 + 0j])
@@ -549,3 +557,4 @@ print(bar_point_array)
 # bar_arm_point_array = bar_point_array + (arm_length * np.exp(arm_angle * 1j))
 
 # print(bar_arm_point_array)
+"""
