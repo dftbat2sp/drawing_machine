@@ -1,4 +1,4 @@
-import cmath
+# import cmath
 import itertools
 import math
 from dataclasses import dataclass
@@ -15,6 +15,10 @@ class IntersectionError(Exception):
     pass
 
 
+class SpiralTypeError(Exception):
+    pass
+
+
 """
 def get_circles_intersections(x0, y0, r0, x1, y1, r1):
     # circle 1: (x0, y0), radius r0
@@ -24,10 +28,12 @@ def get_circles_intersections(x0, y0, r0, x1, y1, r1):
 
     # non intersecting
     if d > r0 + r1:
-        raise IntersectionError(f'Non-intersecting, non-concentric circles not contained within each other.')
+        raise IntersectionError(
+            f'Non-intersecting, non-concentric circles not contained within each other.')
     # One circle within other
     if d < abs(r0 - r1):
-        raise IntersectionError(f'Non-intersecting circles. One contained in the other.')
+        raise IntersectionError(
+            f'Non-intersecting circles. One contained in the other.')
     # coincident circles
     if d == 0:
         raise IntersectionError(f'Concentric circles.')
@@ -65,6 +71,7 @@ color_hex = ['#264653',
              '#3a0ca3',
              '#3a0ca3']
 
+
 def remove_duplicates_from_list(my_list):
     return list(dict.fromkeys(my_list))
 
@@ -73,12 +80,18 @@ def remove_duplicates_from_list(my_list):
 class RotationResolution:
     step_size: float = 0.001
     rotations: float = 50.0
+    balanced_around_zero: bool = False
 
     def __post_init__(self):
         self.num_of_points: int = int(self.rotations / self.step_size)
-        self.rotation_to_radians: float = self.rotations * math.tau
-        self.point_list: np.ndarray = np.linspace(
-            0, self.rotation_to_radians, self.num_of_points)
+        self.num_of_rotation_in_radians: float = self.rotations * math.tau
+        if self.balanced_around_zero:
+            half_rotation_in_radian = self.num_of_rotation_in_radians / 2
+            self.radial_steps_list: np.ndarray = np.linspace(
+                -half_rotation_in_radian, half_rotation_in_radian, self.num_of_points)
+        else:
+            self.radial_steps_list: np.ndarray = np.linspace(
+                0, self.num_of_rotation_in_radians, self.num_of_points)
 
 
 class Anchorable:
@@ -99,7 +112,7 @@ class Anchorable:
     def get_secondary_drawing_objects(self) -> List:
         raise NotImplementedError
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
         """
         returns the min and max values
         Returns
@@ -110,7 +123,17 @@ class Anchorable:
             Minimum Y Value
             Maximum Y Value
         """
-        raise NotImplementedError
+        x_min = min(
+            self.point_array[point_array_starting_point:].real) - buffer
+        x_max = max(
+            self.point_array[point_array_starting_point:].real) + buffer
+
+        y_min = min(
+            self.point_array[point_array_starting_point:].imag) - buffer
+        y_max = max(
+            self.point_array[point_array_starting_point:].imag) + buffer
+
+        return x_min, x_max, y_min, y_max
 
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
         """
@@ -126,16 +149,26 @@ class Anchorable:
         raise NotImplementedError
 
     def get_parent_tree(self) -> List:
-        raise NotImplementedError
-    
-    def animate(self, resolution_obj: RotationResolution, speed: int = 1):
-        
+        # get list of parent heirarchy
+        parent_tree = self.parent.get_parent_tree()
+        # add self to list
+        parent_tree.append(self)
+        # filter list for duplicates
+        parent_tree = remove_duplicates_from_list(parent_tree)
+
+        return parent_tree
+
+    def animate(self, resolution_obj: RotationResolution, speed: int = 1, point_array_starting_point: int = 0):
+
         # get full parent tree of drawer (list of obj)
         obj_needed_for_drawing = self.get_parent_tree()
-        
+
+        # get our own points list
+        self.create_point_lists(resolution_obj)
+
         # calculate points needed to draw all objs
-        for obj in obj_needed_for_drawing:
-            obj.create_point_lists(resolution_obj)
+        # for obj in obj_needed_for_drawing:
+        # obj.create_point_lists(resolution_obj)
 
         # get artists for drawing on mpl figure
         artist_list = []
@@ -144,84 +177,96 @@ class Anchorable:
             artist_list.extend(obj.get_main_drawing_objects())
 
         # add figure and subplots to makes axes
-        fig = plt.figure(figsize=[6,6])
-        fig_static = plt.figure(figsize=[6,6])
-            
+        fig = plt.figure(figsize=[6, 6])
+        fig_static = plt.figure(figsize=[6, 6])
+
         ax = fig.add_subplot(111, frameon=False)
         ax_static = fig_static.add_subplot(111, frameon=False)
 
         fig.tight_layout()
         fig_static.tight_layout()
-        
+
         plt.axis('off')
-        
+
         # get figure limits from drawing objs
-        xmin, xmax, ymin, ymax = self.get_min_max_values()
-        
+        xmin, xmax, ymin, ymax = self.get_min_max_values(
+            point_array_starting_point=point_array_starting_point)
+
         for obj in obj_needed_for_drawing:
-            obj_xmin, obj_xmax, obj_ymin, obj_ymax = obj.get_min_max_values()
+            obj_xmin, obj_xmax, obj_ymin, obj_ymax = obj.get_min_max_values(
+                point_array_starting_point=point_array_starting_point)
             xmin = min(xmin, obj_xmin)
             xmax = max(xmax, obj_xmax)
             ymin = min(ymin, obj_ymin)
             ymax = max(ymax, obj_ymax)
-        
+
         limits_buffer = 5
         xmin = xmin - limits_buffer
         xmax = xmax + limits_buffer
         ymin = ymin - limits_buffer
         ymax = ymax + limits_buffer
-        
+
+        # prevent the limits from exceeding a vallue
+        # helps with + and - infinity limitss
+        max_limit = 1000
+        xmin = max(-max_limit, xmin)
+        ymin = max(-max_limit, ymin)
+        xmax = min(max_limit, xmax)
+        ymax = min(max_limit, ymax)
+
         # lim=200
         ax.set_xlim(left=xmin, right=xmax)
         ax.set_ylim(bottom=ymin, top=ymax)
         ax.set_aspect('equal')
         ax.set_xticks([])
         ax.set_yticks([])
-        
+
         ax_static.set_xlim(left=xmin, right=xmax)
         ax_static.set_ylim(bottom=ymin, top=ymax)
         ax_static.set_aspect('equal')
-        
+
         line, = ax.plot([], [])
-            
-        ax_static.plot(self.point_array.real, self.point_array.imag)
-        
+
+        ax_static.plot(self.point_array[point_array_starting_point:].real,
+                       self.point_array[point_array_starting_point:].imag)
+
         def on_q(event):
             if event.key == 'q':
                 exit()
-        
+
         def init():
             for artist in artist_list:
                 ax.add_artist(artist)
-            
+
             line.set_data([], [])
             return itertools.chain([line], artist_list)
 
         def get_frames():
-            for i in range(self.point_array.size):
+            for i in range(self.point_array.size - point_array_starting_point):
                 point = i * speed
-                if point < self.point_array.size:
+                if point < self.point_array.size - point_array_starting_point:
                     yield point
 
         def animate(i):
-            
+
             for obj in obj_needed_for_drawing:
-                obj.update_drawing_objects(i)
-            
-            line.set_data(self.point_array[:i + 1].real,
-                            self.point_array[:i + 1].imag)
-            
+                obj.update_drawing_objects(i + point_array_starting_point)
+
+            line.set_data(self.point_array[point_array_starting_point:point_array_starting_point + i + 1].real,
+                          self.point_array[point_array_starting_point:point_array_starting_point + i + 1].imag)
+
             return itertools.chain([line], artist_list)
 
         fig.canvas.mpl_connect('key_press_event', on_q)
-        ani = animation.FuncAnimation(fig, animate, interval=40, frames=get_frames, 
-                                    blit=False, 
-                                    save_count=1,
-                                    init_func=init)
-        
+        ani = animation.FuncAnimation(fig, animate, interval=40, frames=get_frames,
+                                      blit=False,
+                                      save_count=1,
+                                      init_func=init)
+
         # export_gcode(drawer)
-        
+
         plt.show()
+
 
 class BarMateSlide:
     pass
@@ -255,7 +300,7 @@ class Anchor(Anchorable, BarMateSlide):
 
     def create_point_lists(self, base_points_list: RotationResolution):
         self.point_array = np.full_like(
-            base_points_list.point_list, self.point, dtype=complex)
+            base_points_list.radial_steps_list, self.point, dtype=complex)
         # self.point_array = self.point
 
     def update_drawing_objects(self, frame) -> None:
@@ -267,7 +312,7 @@ class Anchor(Anchorable, BarMateSlide):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_marker, ]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
         return self.point.real - buffer, self.point.real + buffer, self.point.imag - buffer, self.point.imag + buffer
 
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
@@ -281,12 +326,12 @@ class Anchor(Anchorable, BarMateSlide):
 
 
 class Circle(Anchorable, BarMateSlide):
-    exp_const = math.tau * 1j
+    # exp_const = math.tau * 1j
 
     def __init__(self,
                  radius: float,
                  frequency: float,
-                 starting_angle: float = 0,
+                 starting_angle: float = math.tau,
                  deg: bool = False,
                  parent: Anchorable = Anchor(0 + 0j)):
         # circle defined by C * exp( 2*pi*j * freq * resolution_ticker )
@@ -301,13 +346,12 @@ class Circle(Anchorable, BarMateSlide):
             self.starting_angle: float = math.radians(starting_angle)
 
         # constant
-        self.length_starting_angle: complex = self.radius * \
-            cmath.exp(self.starting_angle * 1j)
+        # self.circle_constants: complex = self.radius * np.exp(self.starting_angle * 1j * self.exp_const * self.rotation_frequency)
 
-        self.parent: Anchorable = parent
+        self.parent: Type[Anchorable] = parent
 
         self.color = random.choice(color_hex)
-        
+
         """
         Drawing Objects
         """
@@ -316,7 +360,6 @@ class Circle(Anchorable, BarMateSlide):
         self.main_centre2point_line_artist = plt.Line2D(
             [], [], marker='.', markevery=(1, 1), color=self.color)
 
-        
         self.secondary_circle_edge_artist = plt.Circle(
             (0, 0), self.radius, fill=False)
         self.secondary_centre2point_line_artist = plt.Line2D(
@@ -324,12 +367,13 @@ class Circle(Anchorable, BarMateSlide):
 
         super().__init__()
 
-    def create_point_lists(self, base_points_list: RotationResolution) -> None:
+    def create_point_lists(self, resolution: RotationResolution) -> None:
         if self.point_array is None:
-            self.parent.create_point_lists(base_points_list)
-
-            self.point_array = self.parent.point_array + self.length_starting_angle * np.exp(
-                self.exp_const * self.rotation_frequency * base_points_list.point_list)
+            self.parent.create_point_lists(resolution)
+            # parent points + radius * exp(i * angle)
+            # angle = starting angle + (rotational multiplier * base rotation)
+            self.point_array = self.parent.point_array + (self.radius * np.exp(1j * (
+                self.starting_angle + (self.rotation_frequency * resolution.radial_steps_list))))
 
     def update_drawing_objects(self, frame) -> None:
         # MAIN
@@ -352,14 +396,8 @@ class Circle(Anchorable, BarMateSlide):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_circle_edge_artist, self.secondary_centre2point_line_artist]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
-        x_min = min(self.point_array[:].real) - buffer
-        x_max = max(self.point_array[:].real) + buffer
-
-        y_min = min(self.point_array[:].imag) - buffer
-        y_max = max(self.point_array[:].imag) + buffer
-
-        return x_min, x_max, y_min, y_max
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
+        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_point=point_array_starting_point)
 
     def get_min_max_values_normalized_to_origin(self, buffer=0) -> Tuple:
         x_max = self.radius + buffer
@@ -371,17 +409,159 @@ class Circle(Anchorable, BarMateSlide):
         return x_min, x_max, y_min, y_max
 
     def get_parent_tree(self) -> List:
-        # get list of parent heirarchy
-        parent_tree = self.parent.get_parent_tree()
-        # add self to list
-        parent_tree.append(self)
-        # filter list for duplicates
-        parent_tree = remove_duplicates_from_list(parent_tree)
-
-        return parent_tree
+        return super().get_parent_tree()
 
     def __str__(self):
         return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
+
+
+class Spiral(Anchorable, BarMateSlide):
+    """
+    archimedean:
+        parameters:
+            0: radius multiplier modifier (bigger the number, the larger the gap between rings)
+               (a*phi)
+
+    hyperbolic:
+        parameters:
+            0: alpha (radius modifier a/phi)
+
+    fermat:
+        parameters:
+            0: alpha (radius modifier a * phi ^ 1/2)
+
+    lituus:
+        parameters:
+            0: alpha (radius modifer a / phi ^ 1/2 OR a * phi ^ -1/2)
+
+    logarithmic:
+        parameters:
+            0: alpha (radius modifer)
+            1: ki (radius growth acceleration)
+                a * exp(ki * phi)
+
+    poinsots-csch:
+
+    poinsots-sech:
+
+    doppler:
+
+
+    see: https://en.wikipedia.org/wiki/Spiral
+         https://en.wikipedia.org/wiki/List_of_spirals
+
+    """
+    spiral_type = ["archimedean", "hyperbolic", "fermat",
+                   "lituus", "logarithmic", "poinsots-csch", "poinsots-sech", "doppler"]
+    exp_const = math.tau * 1j
+
+    def __init__(self,
+                 parent: Type[Anchorable],
+                 starting_angle: float,
+                 frequency: float,  # bigger number = tigher loops & faster spin
+                 type: str,
+                 spiral_parameters: List[float],
+                 deg: bool = False,
+                 ):
+
+        super().__init__()
+        self.parent: Type[Anchorable] = parent
+
+        if not deg:
+            self.starting_angle: float = starting_angle
+        else:
+            # convert from deg to radians for internal math
+            self.starting_angle: float = math.radian(starting_angle)
+
+        self.rotation_frequency: float = frequency
+
+        if type not in self.spiral_type:
+            raise SpiralTypeError
+        self.type: str = type
+
+        self.spiral_parameters: List[float] = spiral_parameters
+
+        self.color = random.choice(color_hex)
+
+        """
+        Drawing Objects
+        """
+        self.drawing_object_spiral = plt.Line2D(
+            # [], [], marker='*', markevery=(1, 1), linestyle='--')
+            [], [], linestyle='--')
+        self.drawing_object_parent2spiral = plt.Line2D(
+            # [], [], marker='x', markevery=(1, 1), linestyle='-.')
+            [], [], marker='x', markevery=None, linestyle='-.')
+
+    def create_point_lists(self, resolution: RotationResolution) -> None:
+        if self.point_array is None:
+            self.parent.create_point_lists(resolution)
+
+        if self.type == "archimedean":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] * resolution.radial_steps_list) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "hyperbolic":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] / resolution.radial_steps_list) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "fermat":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] * np.sqrt(resolution.radial_steps_list)) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "lituus":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] / np.sqrt(resolution.radial_steps_list)) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "logarithmic":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] * np.exp(self.spiral_parameters[1] * resolution.radial_steps_list)) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "poinsots-csch":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] / np.sinh(self.spiral_parameters[1] * resolution.radial_steps_list)) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "poinsots-sech":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] / np.cosh(self.spiral_parameters[1] * resolution.radial_steps_list)) * \
+                np.exp(1j * (self.starting_angle +
+                       (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "doppler":
+            self.point_array = self.parent.point_array + \
+                (self.spiral_parameters[0] * ((self.rotation_frequency * resolution.radial_steps_list) * np.cos(self.rotation_frequency * resolution.radial_steps_list) + self.spiral_parameters[1] *  (self.rotation_frequency * resolution.radial_steps_list))) + 1j*(self.spiral_parameters[0] * (self.rotation_frequency * resolution.radial_steps_list) * np.sin(self.rotation_frequency * resolution.radial_steps_list))
+                # here lies some happy accidents
+                # adding additional rotation to doppler spirals
+                # ! DO NOT DELETE
+                # np.sqrt(
+                #     np.power(self.spiral_parameters[0] * (resolution.radial_steps_list * np.cos(resolution.radial_steps_list) + (self.spiral_parameters[1] * resolution.radial_steps_list)), 2) +
+                #     np.power(self.spiral_parameters[0] * resolution.radial_steps_list * np.sin(
+                #         resolution.radial_steps_list), 2)
+                # ) * np.exp(1j * (self.starting_angle +
+                #                  (self.rotation_frequency * resolution.radial_steps_list)))
+
+    def update_drawing_objects(self, frame) -> None:
+        # spiral drawing obj
+        self.drawing_object_spiral.set_data(
+            self.point_array[:frame].real, self.point_array[:frame].imag)
+
+        # center to edge of spriral obj
+        self.drawing_object_parent2spiral.set_data([self.parent.point_array[frame].real, self.point_array[frame].real],
+                                                   [self.parent.point_array[frame].imag, self.point_array[frame].imag])
+
+    def get_main_drawing_objects(self) -> List:
+        return [self.drawing_object_spiral, self.drawing_object_parent2spiral]
+
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
+        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_point=point_array_starting_point)
+
+    def get_parent_tree(self) -> List:
+        return super().get_parent_tree()
 
 
 class Bar(Anchorable, BarMateFix):
@@ -417,8 +597,8 @@ class Bar(Anchorable, BarMateFix):
         self.main_pre_arm_point_line = plt.Line2D(
             [], [], marker='x', markevery=(1, 1))
         self.main_arm_line = plt.Line2D([], [], marker='.', markevery=(1, 1))
-        self.mate_intersection_circle = plt.Circle(
-            (0, 0), self.mate_length, fill=False)
+        # self.mate_intersection_circle = plt.Circle(
+        # (0, 0), self.mate_length, fill=False)
 
         self.secondary_mate_line = plt.Line2D(
             [], [], marker='D', markevery=(1, 1), linestyle='--')
@@ -500,18 +680,24 @@ class Bar(Anchorable, BarMateFix):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_pre_arm_point_line, self.secondary_mate_line, self.secondary_arm_line]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
 
-        real_list = [self.point_array[:].real]
-        imag_list = [self.point_array[:].imag]
+        real_list = [self.point_array[point_array_starting_point:].real]
+        imag_list = [self.point_array[point_array_starting_point:].imag]
         if not point_array_only:
-            real_list.append(self.mate_point_array[:].real)
-            real_list.append(self.parent.point_array[:].real)
-            real_list.append(self.pre_arm_point_array[:].real)
+            real_list.append(
+                self.mate_point_array[point_array_starting_point:].real)
+            real_list.append(
+                self.parent.point_array[point_array_starting_point:].real)
+            real_list.append(
+                self.pre_arm_point_array[point_array_starting_point:].real)
 
-            imag_list.append(self.mate_point_array[:].imag)
-            imag_list.append(self.parent.point_array[:].imag)
-            imag_list.append(self.pre_arm_point_array[:].imag)
+            imag_list.append(
+                self.mate_point_array[point_array_starting_point:].imag)
+            imag_list.append(
+                self.parent.point_array[point_array_starting_point:].imag)
+            imag_list.append(
+                self.pre_arm_point_array[point_array_starting_point:].imag)
 
         x_min = min(itertools.chain.from_iterable(real_list)) - buffer
         x_max = max(itertools.chain.from_iterable(real_list)) + buffer
@@ -591,7 +777,6 @@ class Bar(Anchorable, BarMateFix):
             # x3 = x2 + h * (y1 - y0) / d
             # y3 = y2 - h * (x1 - x0) / d
 
-
         elif self.mate.mate_point_array is None:
             self.mate.mate_point_array = self.mate_point_array
 
@@ -601,7 +786,8 @@ class Bar(Anchorable, BarMateFix):
         # get mate's tree
         mate_parent_tree = self.mate.get_parent_tree()
         # concatencate mate and parent tree lists
-        parent_tree = itertools.chain(parent_parent_tree, mate_parent_tree, [self])
+        parent_tree = itertools.chain(
+            parent_parent_tree, mate_parent_tree, [self])
         # parent_parent_tree.extend(mate_parent_tree)
         # add self to list
         # parent_tree.append(self)
@@ -610,21 +796,72 @@ class Bar(Anchorable, BarMateFix):
 
         return parent_tree
 
+
 def export_gcode(drawer: Type[Anchorable]):
-    with open('/home/dev/drawing_machine/python/cycloid_custom.gcode', 'w') as writer:
-        writer.write("G21 ; mm-mode\n")
-        writer.write("M3S0\n")
+    with open('/home/dev/drawing_machine/python/cycloid_custom.gcode', 'w') as file_writer:
+        file_writer.write("G21 ; mm-mode\n")
+        file_writer.write("M3S0\n")
         for coordinate in drawer.point_array:
             x = coordinate.real + 100
             y = coordinate.imag + 100
-            writer.write(f'G1 F1000 X{x:.2f} Y{y:.2f} Z0\n')
-            
-        writer.write("M3S255\n")
+            file_writer.write(f'G1 F1000 X{x:.2f} Y{y:.2f} Z0\n')
 
+        file_writer.write("M3S255\n")
+
+
+# base_points = RotationResolution(rotations=40, step_size=0.0005, balanced_around_zero=True)
+base_points = RotationResolution(rotations=40, step_size=0.0005)
+h = 100
+w = 45
+
+c1_size = (h+w)/2
+# c2_size = (h-w)/2
+c2_size = 40
+
+print(f'c1_size: {c1_size}')
+print(f'c2_size: {c2_size}')
+
+a1 = Anchor(0+0j)
+# s1 = Spiral(a1, 0, 0.1, "archimedean", [0.01])
+# s1 = Spiral(a1, 0, 0.3, "hyperbolic", [10000])
+# s1 = Spiral(a1, 0, 0.1, "fermat", [1])
+# s1 = Spiral(a1, 0, 0.1, "lituus", [100])
+# s1 = Spiral(a1, 0, 0.1, "logarithmic", [10, 0.05])
+# s1 = Spiral(a1, 0, 0.1, "poinsots-csch", [1, 0.0001])
+# s1 = Spiral(a1, 0, 0.1, "poinsots-sech", [10, 0.04])
+s1 = Spiral(a1, 0, 1, "doppler", [1, 0.6])
+c1 = Circle(c1_size, 1, starting_angle=np.pi/4, parent=s1)
+# c2 = Circle (c2_size, -1, parent=c1)
+c2 = Circle(c2_size, -2, parent=c1)
+c3 = Circle(c1_size, 3, starting_angle=np.pi, parent=c2)
+c4 = Circle(c2_size, -2, parent=c3)
+# a1 = Anchor(50+50j)
+# b1 = Bar(c4, 70, a1)
+# c5 = Circle10, 10, parent=c4)
+
+# b1.animate(base_points, speed=10)
+# s1.animate(base_points, speed=100, point_array_starting_point=3000)
+s1.animate(base_points, speed=100)
+
+# TODO
+# ? is there a better way to chain elements together?
+# ?     maybe make a way to build common objects easier
+# ? bar needs a better way of connecting two bars together.
+# ? create an arc or line obj
+# ? create an elipse obj (two circles)
+# ? allow all objects to change size
+# ? SPIRALS
+# ?   implement other spiral types from wiki page
+# ?   change rotationaly freq as radian list counts on
+# ?   slowing the spin as of the spiral as it gets bigger
+# ?   what happens when rotation_freq is a linspace between two numbers?
+# ?   how can you start a spiral not from phi = 0 but still sync with the other items?
+
+"""
 def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
     # get full parent tree of drawer (list of obj)
     obj_needed_for_drawing = drawer.get_parent_tree()
-    
+
     # calculate points needed to draw all objs
     for obj in obj_needed_for_drawing:
         obj.create_point_lists(resolution_obj)
@@ -636,56 +873,56 @@ def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
         artist_list.extend(obj.get_main_drawing_objects())
 
     # add figure and subplots to makes axes
-    fig = plt.figure(figsize=[6,6])
-    fig_static = plt.figure(figsize=[6,6])
-        
+    fig = plt.figure(figsize=[6, 6])
+    fig_static = plt.figure(figsize=[6, 6])
+
     ax = fig.add_subplot(111, frameon=False)
     ax_static = fig_static.add_subplot(111, frameon=False)
 
     fig.tight_layout()
     fig_static.tight_layout()
-    
+
     plt.axis('off')
-    
+
     # get figure limits from drawing objs
     xmin, xmax, ymin, ymax = drawer.get_min_max_values()
-    
+
     for obj in obj_needed_for_drawing:
         obj_xmin, obj_xmax, obj_ymin, obj_ymax = obj.get_min_max_values()
         xmin = min(xmin, obj_xmin)
         xmax = max(xmax, obj_xmax)
         ymin = min(ymin, obj_ymin)
         ymax = max(ymax, obj_ymax)
-    
+
     limits_buffer = 5
     xmin = xmin - limits_buffer
     xmax = xmax + limits_buffer
     ymin = ymin - limits_buffer
     ymax = ymax + limits_buffer
-    
+
     # lim=200
     ax.set_xlim(left=xmin, right=xmax)
     ax.set_ylim(bottom=ymin, top=ymax)
     ax.set_aspect('equal')
     ax.set_xticks([])
     ax.set_yticks([])
-    
+
     ax_static.set_xlim(left=xmin, right=xmax)
     ax_static.set_ylim(bottom=ymin, top=ymax)
     ax_static.set_aspect('equal')
-    
+
     line, = ax.plot([], [])
-        
+
     ax_static.plot(drawer.point_array.real, drawer.point_array.imag)
-    
+
     def on_q(event):
         if event.key == 'q':
             exit()
-    
+
     def init():
         for artist in artist_list:
             ax.add_artist(artist)
-        
+
         line.set_data([], [])
         return itertools.chain([line], artist_list)
 
@@ -696,57 +933,27 @@ def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
                 yield point
 
     def animate(i):
-        
+
         for obj in obj_needed_for_drawing:
             obj.update_drawing_objects(i)
-        
+
         line.set_data(drawer.point_array[:i + 1].real,
                       drawer.point_array[:i + 1].imag)
-        
+
         return itertools.chain([line], artist_list)
 
     fig.canvas.mpl_connect('key_press_event', on_q)
-    ani = animation.FuncAnimation(fig, animate, interval=40, frames=get_frames, 
-                                  blit=False, 
+    ani = animation.FuncAnimation(fig, animate, interval=40, frames=get_frames,
+                                  blit=False,
                                   save_count=1,
                                   init_func=init)
-    
+
     # export_gcode(drawer)
-    
+
     plt.show()
 
+"""
 
-
-base_points = RotationResolution(rotations=40, step_size=0.0005)
-h = 100
-w = 45
-
-c1_size = (h+w)/2
-c2_size = (h-w)/2
-
-print(f'c1_size: {c1_size}')
-print(f'c2_size: {c2_size}')
-
-c1 = Circle (c1_size, 0.5, starting_angle=np.pi/3)
-c2 = Circle (c2_size, -1, parent=c1)
-c3 = Circle (c1_size, 2, starting_angle=np.pi, parent=c2)
-c4 = Circle (c2_size, -2.62, parent=c3)
-# c5 = Circle (10, 10, parent=c4)
-
-c4.animate(base_points, speed=10)
-# animate_full(circle_outside, base_points)
-# animate_full(c2, base_points)
-
-
-# TODO
-# ? is there a better way to chain elements together?
-# ?     maybe make a way to build common objects easier
-# ? bar needs a better way of connecting two bars together.
-# ? how to create an arc or line obj
-# ? how to create an elipse obj
-# ? set animate as an anchorable function
-# ?     e.g circle2.animate
-# ?     making that obj the drawer obj!
 
 """
 middle_rotation = 9
@@ -754,7 +961,8 @@ outer_rotation = -4.1
 
 anchor = Circle(150, 1.1, parent=Anchor(0 +0j))
 big_circle = Circle(120*0.5, -3.3 )
-circle_middle_circle = Circle(20*0.5, middle_rotation, starting_angle=-2*np.pi*(1/8), parent=big_circle)
+circle_middle_circle = Circle(
+    20*0.5, middle_rotation, starting_angle=-2*np.pi*(1/8), parent=big_circle)
 circle_outside = Circle(54*0.5, outer_rotation, parent=circle_middle_circle)
 bar = Bar(anchor, 50.0, circle_outside)
 """
@@ -895,4 +1103,3 @@ bar = Bar(anchor, 50.0, circle_outside)
 #                                 repeat=False)
 
 #     plt.show()
-
