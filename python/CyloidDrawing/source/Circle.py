@@ -2,7 +2,7 @@
 import itertools
 import math
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple, Type, Union
+from typing import Iterable, List, Tuple, Type, Union, Dict
 import random
 
 import matplotlib.animation as animation
@@ -112,7 +112,7 @@ class Anchorable:
     def get_secondary_drawing_objects(self) -> List:
         raise NotImplementedError
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_offset: int = 0) -> Tuple:
         """
         returns the min and max values
         Returns
@@ -124,14 +124,14 @@ class Anchorable:
             Maximum Y Value
         """
         x_min = min(
-            self.point_array[point_array_starting_point:].real) - buffer
+            self.point_array[point_array_starting_offset:].real) - buffer
         x_max = max(
-            self.point_array[point_array_starting_point:].real) + buffer
+            self.point_array[point_array_starting_offset:].real) + buffer
 
         y_min = min(
-            self.point_array[point_array_starting_point:].imag) - buffer
+            self.point_array[point_array_starting_offset:].imag) - buffer
         y_max = max(
-            self.point_array[point_array_starting_point:].imag) + buffer
+            self.point_array[point_array_starting_offset:].imag) + buffer
 
         return x_min, x_max, y_min, y_max
 
@@ -158,17 +158,66 @@ class Anchorable:
 
         return parent_tree
 
-    def animate(self, resolution_obj: RotationResolution, speed: int = 1, point_array_starting_point: int = 0):
+    def export_gcode(self, resolution_obj: RotationResolution, canvas_xlimit: int = 330, canvas_ylimit: int = 330, canvas_axes_buffer: int = 10, point_array_starting_offset: int = 0, decimal_precision: int = 1, file_name: str = "spiral"):
+
+        # ! fix scaling so that images aren't warped
+        # i.e. squished in x or y direction
+        self.create_point_lists(resolution_obj)
+
+        with open(f'C:\\Users\\mealy\\Desktop\\gcode\\{file_name}.gcode', 'w') as file_writer:
+            file_writer.write("G21 ; mm-mode\n")
+            file_writer.write("M3S0\n")
+            previous_coordinate = 0 + 0j
+            for coordinate in self._scale_point_array(canvas_xlimit, canvas_ylimit, canvas_axes_buffer, point_array_starting_offset):
+                # x = coordinate.real
+                # y = coordinate.imag
+                if f'{coordinate:.1f}' != f'{previous_coordinate:.1f}':
+                    file_writer.write(f'G1 F5000 X{coordinate.real:.{decimal_precision}f} Y{coordinate.imag:.{decimal_precision}f} Z0\n')
+                previous_coordinate = coordinate
+
+            file_writer.write("M3S255\n")
+
+    def _scale_point_array(self, canvas_xlimit: int, canvas_ylimit: int, canvas_axes_buffer: int, point_array_starting_offset = 0) -> np.ndarray:
+        xmin, xmax, ymin, ymax = self.get_min_max_values(point_array_starting_offset=point_array_starting_offset)
+        canvas_xlimit_minus_axis_buffer = canvas_xlimit - canvas_axes_buffer # amount of space to draw is limit - axes buffer
+        canvas_ylimit_minus_axis_buffer = canvas_ylimit - canvas_axes_buffer
+        # take the biggest different between the x and y direction
+        # if you took them seperately, it would squeeze or stretch the image
+        # max_difference_between_points = max((xmax - xmin), (ymax - ymin)) 
+        # print(f'xmax: {xmax}\nxmin: {xmin}\nxdiff: {xmax-xmin}\nymax: {ymax}\nymin: {ymin}\nydiff: {ymax - ymin}\nmax-diff: {max_difference_between_points}')
+
+        max_difference_in_x_direction = xmax - xmin # difference between the smallest and largest x coordinate
+        max_difference_in_y_direction = ymax - ymin # difference between teh smallest and largest y coordinate
+
+        # how much does x need to scale for the farthest point is scaled to the canvas' limit
+        scale_ratio_x_direction = canvas_xlimit_minus_axis_buffer / max_difference_in_x_direction 
+        # how much does y need to scale for the farthest point is scaled to the canvas' limit
+        scale_ratio_y_direction = canvas_ylimit_minus_axis_buffer / max_difference_in_y_direction
+
+        canvas_scale_ratio = min(scale_ratio_x_direction, scale_ratio_y_direction)
+
+        # shift points so xmin and ymin are on theie respective axes
+        scaled_point_array = self.point_array[point_array_starting_offset:]
+
+        scaled_point_array[:].real = scaled_point_array[:].real - xmin
+        scaled_point_array[:].imag = scaled_point_array[:].imag - ymin
+        # scale all points to inside the canvas limits then add buffer from the axes
+        # scaled_point_array[:].real = scaled_point_array[:].real * (canvas_true_x_difference / shape_x_difference) + canvas_axes_buffer
+        scaled_point_array[:].real = scaled_point_array[:].real * (canvas_scale_ratio)
+        scaled_point_array[:].real = scaled_point_array[:].real + canvas_axes_buffer
+        # scaled_point_array[:].imag = scaled_point_array[:].imag * (canvas_true_y_difference / shape_y_difference) + canvas_axes_buffer
+        scaled_point_array[:].imag = scaled_point_array[:].imag * (canvas_scale_ratio)
+        scaled_point_array[:].imag = scaled_point_array[:].imag + canvas_axes_buffer
+        
+        return scaled_point_array
+
+    def animate(self, resolution_obj: RotationResolution, speed: int = 1, point_array_starting_offset: int = 0) -> None:
 
         # get full parent tree of drawer (list of obj)
         obj_needed_for_drawing = self.get_parent_tree()
 
         # get our own points list
         self.create_point_lists(resolution_obj)
-
-        # calculate points needed to draw all objs
-        # for obj in obj_needed_for_drawing:
-        # obj.create_point_lists(resolution_obj)
 
         # get artists for drawing on mpl figure
         artist_list = []
@@ -190,11 +239,11 @@ class Anchorable:
 
         # get figure limits from drawing objs
         xmin, xmax, ymin, ymax = self.get_min_max_values(
-            point_array_starting_point=point_array_starting_point)
+            point_array_starting_offset=point_array_starting_offset)
 
         for obj in obj_needed_for_drawing:
             obj_xmin, obj_xmax, obj_ymin, obj_ymax = obj.get_min_max_values(
-                point_array_starting_point=point_array_starting_point)
+                point_array_starting_offset=point_array_starting_offset)
             xmin = min(xmin, obj_xmin)
             xmax = max(xmax, obj_xmax)
             ymin = min(ymin, obj_ymin)
@@ -227,8 +276,8 @@ class Anchorable:
 
         line, = ax.plot([], [])
 
-        ax_static.plot(self.point_array[point_array_starting_point:].real,
-                       self.point_array[point_array_starting_point:].imag)
+        ax_static.plot(self.point_array[point_array_starting_offset:].real,
+                       self.point_array[point_array_starting_offset:].imag)
 
         def on_q(event):
             if event.key == 'q':
@@ -242,23 +291,23 @@ class Anchorable:
             return itertools.chain([line], artist_list)
 
         def get_frames():
-            for i in range(self.point_array.size - point_array_starting_point):
+            for i in range(self.point_array.size - point_array_starting_offset):
                 point = i * speed
-                if point < self.point_array.size - point_array_starting_point:
+                if point < self.point_array.size - point_array_starting_offset:
                     yield point
 
-        def animate(i):
+        def matplotlib_animate(i):
 
             for obj in obj_needed_for_drawing:
-                obj.update_drawing_objects(i + point_array_starting_point)
+                obj.update_drawing_objects(i + point_array_starting_offset)
 
-            line.set_data(self.point_array[point_array_starting_point:point_array_starting_point + i + 1].real,
-                          self.point_array[point_array_starting_point:point_array_starting_point + i + 1].imag)
+            line.set_data(self.point_array[point_array_starting_offset:point_array_starting_offset + i + 1].real,
+                          self.point_array[point_array_starting_offset:point_array_starting_offset + i + 1].imag)
 
             return itertools.chain([line], artist_list)
 
         fig.canvas.mpl_connect('key_press_event', on_q)
-        ani = animation.FuncAnimation(fig, animate, interval=40, frames=get_frames,
+        ani = animation.FuncAnimation(fig, matplotlib_animate, interval=40, frames=get_frames,
                                       blit=False,
                                       save_count=1,
                                       init_func=init)
@@ -312,7 +361,7 @@ class Anchor(Anchorable, BarMateSlide):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_marker, ]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_offset: int = 0) -> Tuple:
         return self.point.real - buffer, self.point.real + buffer, self.point.imag - buffer, self.point.imag + buffer
 
     def get_min_max_values_normalized_to_origin(self, buffer: float = 0) -> Tuple:
@@ -396,8 +445,8 @@ class Circle(Anchorable, BarMateSlide):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_circle_edge_artist, self.secondary_centre2point_line_artist]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
-        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_point=point_array_starting_point)
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_offset: int = 0) -> Tuple:
+        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_offset=point_array_starting_offset)
 
     def get_min_max_values_normalized_to_origin(self, buffer=0) -> Tuple:
         x_max = self.radius + buffer
@@ -452,7 +501,7 @@ class Spiral(Anchorable, BarMateSlide):
 
     """
     spiral_type = ["archimedean", "hyperbolic", "fermat",
-                   "lituus", "logarithmic", "poinsots-csch", "poinsots-sech", "doppler"]
+                   "lituus", "logarithmic", "poinsots-csch", "poinsots-sech", "doppler", "doppler+rotation"]
     exp_const = math.tau * 1j
 
     def __init__(self,
@@ -535,15 +584,14 @@ class Spiral(Anchorable, BarMateSlide):
         elif self.type == "doppler":
             self.point_array = self.parent.point_array + \
                 (self.spiral_parameters[0] * ((self.rotation_frequency * resolution.radial_steps_list) * np.cos(self.rotation_frequency * resolution.radial_steps_list) + self.spiral_parameters[1] *  (self.rotation_frequency * resolution.radial_steps_list))) + 1j*(self.spiral_parameters[0] * (self.rotation_frequency * resolution.radial_steps_list) * np.sin(self.rotation_frequency * resolution.radial_steps_list))
-                # here lies some happy accidents
-                # adding additional rotation to doppler spirals
-                # ! DO NOT DELETE
-                # np.sqrt(
-                #     np.power(self.spiral_parameters[0] * (resolution.radial_steps_list * np.cos(resolution.radial_steps_list) + (self.spiral_parameters[1] * resolution.radial_steps_list)), 2) +
-                #     np.power(self.spiral_parameters[0] * resolution.radial_steps_list * np.sin(
-                #         resolution.radial_steps_list), 2)
-                # ) * np.exp(1j * (self.starting_angle +
-                #                  (self.rotation_frequency * resolution.radial_steps_list)))
+        elif self.type == "doppler+rotation":
+            self.point_array = self.parent.point_array + \
+                np.sqrt(
+                    np.power(self.spiral_parameters[0] * (resolution.radial_steps_list * np.cos(resolution.radial_steps_list) + (self.spiral_parameters[1] * resolution.radial_steps_list)), 2) +
+                    np.power(self.spiral_parameters[0] * resolution.radial_steps_list * np.sin(
+                        resolution.radial_steps_list), 2)
+                ) * np.exp(1j * (self.starting_angle +
+                                 (self.rotation_frequency * resolution.radial_steps_list)))
 
     def update_drawing_objects(self, frame) -> None:
         # spiral drawing obj
@@ -557,8 +605,8 @@ class Spiral(Anchorable, BarMateSlide):
     def get_main_drawing_objects(self) -> List:
         return [self.drawing_object_spiral, self.drawing_object_parent2spiral]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
-        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_point=point_array_starting_point)
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_offset: int = 0) -> Tuple:
+        return super().get_min_max_values(buffer=buffer, point_array_only=point_array_only, point_array_starting_offset=point_array_starting_offset)
 
     def get_parent_tree(self) -> List:
         return super().get_parent_tree()
@@ -680,24 +728,24 @@ class Bar(Anchorable, BarMateFix):
     def get_secondary_drawing_objects(self) -> List:
         return [self.secondary_pre_arm_point_line, self.secondary_mate_line, self.secondary_arm_line]
 
-    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_point: int = 0) -> Tuple:
+    def get_min_max_values(self, buffer: float = 0, point_array_only: bool = False, point_array_starting_offset: int = 0) -> Tuple:
 
-        real_list = [self.point_array[point_array_starting_point:].real]
-        imag_list = [self.point_array[point_array_starting_point:].imag]
+        real_list = [self.point_array[point_array_starting_offset:].real]
+        imag_list = [self.point_array[point_array_starting_offset:].imag]
         if not point_array_only:
             real_list.append(
-                self.mate_point_array[point_array_starting_point:].real)
+                self.mate_point_array[point_array_starting_offset:].real)
             real_list.append(
-                self.parent.point_array[point_array_starting_point:].real)
+                self.parent.point_array[point_array_starting_offset:].real)
             real_list.append(
-                self.pre_arm_point_array[point_array_starting_point:].real)
+                self.pre_arm_point_array[point_array_starting_offset:].real)
 
             imag_list.append(
-                self.mate_point_array[point_array_starting_point:].imag)
+                self.mate_point_array[point_array_starting_offset:].imag)
             imag_list.append(
-                self.parent.point_array[point_array_starting_point:].imag)
+                self.parent.point_array[point_array_starting_offset:].imag)
             imag_list.append(
-                self.pre_arm_point_array[point_array_starting_point:].imag)
+                self.pre_arm_point_array[point_array_starting_offset:].imag)
 
         x_min = min(itertools.chain.from_iterable(real_list)) - buffer
         x_max = max(itertools.chain.from_iterable(real_list)) + buffer
@@ -797,20 +845,8 @@ class Bar(Anchorable, BarMateFix):
         return parent_tree
 
 
-def export_gcode(drawer: Type[Anchorable]):
-    with open('/home/dev/drawing_machine/python/cycloid_custom.gcode', 'w') as file_writer:
-        file_writer.write("G21 ; mm-mode\n")
-        file_writer.write("M3S0\n")
-        for coordinate in drawer.point_array:
-            x = coordinate.real + 100
-            y = coordinate.imag + 100
-            file_writer.write(f'G1 F1000 X{x:.2f} Y{y:.2f} Z0\n')
-
-        file_writer.write("M3S255\n")
-
-
 # base_points = RotationResolution(rotations=40, step_size=0.0005, balanced_around_zero=True)
-base_points = RotationResolution(rotations=40, step_size=0.0005)
+base_points = RotationResolution(rotations=39.5, step_size=0.0005)
 h = 100
 w = 45
 
@@ -818,8 +854,8 @@ c1_size = (h+w)/2
 # c2_size = (h-w)/2
 c2_size = 40
 
-print(f'c1_size: {c1_size}')
-print(f'c2_size: {c2_size}')
+# print(f'c1_size: {c1_size}')
+# print(f'c2_size: {c2_size}')
 
 a1 = Anchor(0+0j)
 # s1 = Spiral(a1, 0, 0.1, "archimedean", [0.01])
@@ -829,7 +865,8 @@ a1 = Anchor(0+0j)
 # s1 = Spiral(a1, 0, 0.1, "logarithmic", [10, 0.05])
 # s1 = Spiral(a1, 0, 0.1, "poinsots-csch", [1, 0.0001])
 # s1 = Spiral(a1, 0, 0.1, "poinsots-sech", [10, 0.04])
-s1 = Spiral(a1, 0, 1, "doppler", [1, 0.6])
+# s1 = Spiral(a1, 0, 1, "doppler", [1, 0.6])
+s1 = Spiral(a1, 0, 1.04, "doppler+rotation", [1, 0.7])
 c1 = Circle(c1_size, 1, starting_angle=np.pi/4, parent=s1)
 # c2 = Circle (c2_size, -1, parent=c1)
 c2 = Circle(c2_size, -2, parent=c1)
@@ -840,8 +877,9 @@ c4 = Circle(c2_size, -2, parent=c3)
 # c5 = Circle10, 10, parent=c4)
 
 # b1.animate(base_points, speed=10)
-# s1.animate(base_points, speed=100, point_array_starting_point=3000)
-s1.animate(base_points, speed=100)
+s1.export_gcode(base_points, point_array_starting_offset=1500, decimal_precision=1, file_name="spiral-mod", canvas_xlimit=210, canvas_ylimit=270, )
+# s1.animate(base_points, speed=100, point_array_starting_offset=1000)
+# s1.animate(base_points, speed=100)
 
 # TODO
 # ? is there a better way to chain elements together?
@@ -856,6 +894,8 @@ s1.animate(base_points, speed=100)
 # ?   slowing the spin as of the spiral as it gets bigger
 # ?   what happens when rotation_freq is a linspace between two numbers?
 # ?   how can you start a spiral not from phi = 0 but still sync with the other items?
+# ? curve fitting to turn discrete points into G02 G03 arcs
+# ?   group discrete lumps of points by constant increasing or decreating of x or y    
 
 """
 def animate_full(drawer: Type[Anchorable], resolution_obj: RotationResolution):
