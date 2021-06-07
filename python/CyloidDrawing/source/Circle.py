@@ -72,7 +72,7 @@ def remove_duplicates_from_list(my_list):
 
 
 # @dataclass
-# class RotationResolution:
+# class ListOfPoints:
 #     step_size: float = 0.001
 #     rotations: float = 50.0
 #     balanced_around_zero: bool = False
@@ -114,77 +114,100 @@ class ListOfPoints:
         (3) num of rotations + points per rotation
         (4) num of rotations + total points
     """
+
+    num_of_points_max = 0
+    lowest_common_multiple_num_of_cycles = 1
+
     def __init__(self,
-                 step_size: float = None,
-                 total_num_of_points: int = None,
-                 num_of_rotations: float = None,
-                 num_of_points_per_rotation: int = None,
+                 steps_per_cycle: int = 720,
+                #  total_num_of_points: int = None,
+                #  num_of_rotations: float = 50,
+                #  num_of_points_per_rotation: int = None,
+                 cycle_start: float = 0,
+                 cycle_end: float = 1,
+                 num_of_cycles: int = 1,
                  balanced_around_zero: bool = False):
-        self.point_array = None
 
-        if total_num_of_points is not None:
-            total_num_of_points = math.ceil(total_num_of_points)
+        self.point_array: Union[np.ndarray, None] = None
 
-        if num_of_points_per_rotation is not None:
-            num_of_points_per_rotation = math.ceil(num_of_points_per_rotation)
+        self.num_of_cycles = num_of_cycles
+        self.cycle_start = cycle_start
+        self.cycle_stop = cycle_end
 
-        if num_of_rotations is not None:
-            num_of_rotations_in_radians = num_of_rotations * math.tau
+        self.total_cycles: float = self.cycle_end - self.cycle_start
 
-        # ensure total num of points is an int
-        if step_size is not None and num_of_rotations is not None:
-            num_of_steps = math.ceil(num_of_rotations_in_radians / step_size)
-            if balanced_around_zero:
-                # ensure num_of_steps is even
-                num_of_steps = num_of_steps + (num_of_steps % 2)
-                half_num_of_points = num_of_steps / 2
-                self.point_array = np.arange(
-                    -half_num_of_points, half_num_of_points + 1) * step_size
-            else:
-                self.point_array = np.arange(0, num_of_steps + 1) * step_size
+        if self.total_cycles <= 0:
+            raise ListOfPointsParameterError('cycle_end - cycle_start resulted in zero or a negative number')
 
-        elif step_size is not None and total_num_of_points is not None:
-            if balanced_around_zero:
-                half_num_of_points = total_num_of_points + \
-                    (total_num_of_points % 2)
-                self.point_array = np.arange(
-                    -half_num_of_points, half_num_of_points + 1) * step_size
-            else:
-                self.point_array = np.arange(
-                    0, total_num_of_points + 1) * step_size
+        self.num_of_steps: int = self.get_num_of_points(self.total_cycles, steps_per_cycle, self.num_of_cycles)
 
-        elif num_of_rotations is not None and num_of_points_per_rotation is not None:
-            num_of_points = num_of_rotations * num_of_points_per_rotation
-            if balanced_around_zero:
-                half_num_of_radians = num_of_rotations_in_radians / 2
-                self.point_array = np.linspace(-half_num_of_radians,
-                                               half_num_of_radians,
-                                               num_of_points)
-            else:
-                # add 1 to account for starting at 0
-                self.point_array = np.linspace(0, num_of_rotations_in_radians,
-                                               num_of_points + 1)
+        ListOfPoints.num_of_points_max=max(ListOfPoints.num_of_points_max, self.num_of_steps)
+        ListOfPoints.lowest_common_multiple=np.lcm(ListOfPoints.lowest_common_multiple, self.num_of_cycles)
 
-        elif num_of_rotations is not None and total_num_of_points is not None:
-            if balanced_around_zero:
-                half_num_of_radians = num_of_rotations_in_radians / 2
-                self.point_array = np.linspace(-half_num_of_radians,
-                                               half_num_of_radians,
-                                               total_num_of_points)
-            else:
-                # add 1 to account for starting at 0
-                self.point_array = np.linspace(0, num_of_rotations_in_radians,
-                                               total_num_of_points + 1)
-        else:
-            raise ListOfPointsParameterError
+        # if balanced_around_zero:
+        #     # ensure num_of_steps is even
+        #     # num_of_steps = num_of_steps + (num_of_steps % 2)
+        #     half_num_of_points = num_of_steps / 2
+        #     self.point_array = np.arange(
+        #         -half_num_of_points, half_num_of_points + 1) * step_size
+        # else:
+        #     self.point_array = np.arange(0, num_of_steps + 1) * step_size
 
+        # elif step_size is not None and total_num_of_points is not None:
+        #     if balanced_around_zero:
+        #         half_num_of_points = total_num_of_points + \
+        #             (total_num_of_points % 2)
+        #         self.point_array = np.arange(
+        #             -half_num_of_points, half_num_of_points + 1) * step_size
+        #     else:
+        #         self.point_array = np.arange(
+        #             0, total_num_of_points + 1) * step_size
+
+        # elif num_of_rotations is not None and num_of_points_per_rotation is not None:
+        #     num_of_points = num_of_rotations * num_of_points_per_rotation
+        #     if balanced_around_zero:
+        #         half_num_of_radians = num_of_rotations_in_radians / 2
+        #         self.point_array = np.linspace(-half_num_of_radians,
+        #                                        half_num_of_radians,
+        #                                        num_of_points)
+        #     else:
+        #         # add 1 to account for starting at 0
+        #         self.point_array = np.linspace(0, num_of_rotations_in_radians,
+        #                                        num_of_points + 1)
+
+        # elif num_of_rotations is not None and total_num_of_points is not None:
+        #     if balanced_around_zero:
+        #         half_num_of_radians = num_of_rotations_in_radians / 2
+        #         self.point_array = np.linspace(-half_num_of_radians,
+        #                                        half_num_of_radians,
+        #                                        total_num_of_points)
+        #     else:
+        #         # add 1 to account for starting at 0
+        #         self.point_array = np.linspace(0, num_of_rotations_in_radians,
+        #                                        total_num_of_points + 1)
+        # else:
+        #     raise ListOfPointsParameterError
+
+    @staticmethod
+    def get_num_of_points(total_cycles, steps_per_cycle, num_of_cycles) -> int:
+        # cycles = TAU * total_cycles
+        # step_size = TAU/step_size
+        # typically for #ofPoints you wants total / step size
+        # which would be TAU * cycles / TAU / step size == TAU * cycles * step_size / TAU == cycles * step_size
+        # +1 to account for fence post problem | - - - - | 1 cycle from 0-1 with 5 step size
+        # 0, t/5, 2t/5, 3t/5, 4t/5, 5t/5 <--- 6 points with 1 cycles 5 step size
+        # 2 cycles from 0-1 (0-1-0), 5 step size
+        # 0, t/5, 2t/5, 3t/5, 4t/5, 5t/5, 4t/5, 3t/5, 2t/5, t/5, 0 = 11 points = (2 cycles * total_cycles * step size) + 1
+        return math.ceil(total_cycles * steps_per_cycle * num_of_cycles)
+        
+ListOfPoints.get_num_of_points()
 
 class Anchorable:
     def __init__(self):
-        self.point_array: Type[Union[np.ndarray, None]] = None
+        self.point_array: Union[np.ndarray, None] = None
         # self.list_calculated = False
 
-    def create_point_lists(self, foundation_list_of_points: RotationResolution) -> None:
+    def create_point_lists(self, foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
     def update_drawing_objects(self, frame) -> None:
@@ -247,7 +270,7 @@ class Anchorable:
         return parent_tree
 
     def export_gcode(self,
-                     resolution_obj: RotationResolution,
+                     resolution_obj: ListOfPoints,
                      canvas_xlimit: int = 330,
                      canvas_ylimit: int = 330,
                      canvas_axes_buffer: int = 10,
@@ -327,7 +350,7 @@ class Anchorable:
         return scaled_point_array
 
     def animate(self,
-                resolution_obj: RotationResolution,
+                resolution_obj: ListOfPoints,
                 speed: int = 1,
                 point_array_starting_offset: int = 0) -> None:
 
@@ -453,10 +476,10 @@ class BarMateFix:
         self.mate_point_array: Type[Union[np.ndarray, None]] = None
 
     def get_circle_intersection_with_mate(
-            self, foundation_list_of_points: RotationResolution) -> None:
+            self, foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
-    def get_parent_points(self, foundation_list_of_points: RotationResolution) -> None:
+    def get_parent_points(self, foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
 
@@ -473,7 +496,7 @@ class Anchor(Anchorable, BarMateSlide):
                                            [self.point.imag],
                                            marker="^")
 
-    def create_point_lists(self, foundation_list_of_points: RotationResolution):
+    def create_point_lists(self, foundation_list_of_points: ListOfPoints):
         self.point_array = np.full_like(foundation_list_of_points.point_array,
                                         self.point,
                                         dtype=complex)
@@ -718,7 +741,7 @@ class Spiral(Anchorable, BarMateSlide):
             markevery=None,
             linestyle='-.')
 
-    def create_point_lists(self, resolution: RotationResolution) -> None:
+    def create_point_lists(self, resolution: ListOfPoints) -> None:
         if self.point_array is None:
             self.parent.create_point_lists(resolution)
 
@@ -845,10 +868,10 @@ class Bar(Anchorable, BarMateFix):
                                              marker='x',
                                              markevery=(1, 1))
 
-    def get_parent_points(self, foundation_list_of_points: RotationResolution) -> None:
+    def get_parent_points(self, foundation_list_of_points: ListOfPoints) -> None:
         self.parent.create_point_lists(foundation_list_of_points)
 
-    def create_point_lists(self, foundation_list_of_points: RotationResolution) -> None:
+    def create_point_lists(self, foundation_list_of_points: ListOfPoints) -> None:
         if self.point_array is None:
             self.get_parent_points(foundation_list_of_points)
 
@@ -1012,7 +1035,7 @@ class Bar(Anchorable, BarMateFix):
         return x_min, x_max, y_min, y_max
 
     def get_circle_intersection_with_mate(
-            self, foundation_list_of_points: RotationResolution) -> None:
+            self, foundation_list_of_points: ListOfPoints) -> None:
         if self.mate_point_array is None:
             self.mate.get_parent_points(foundation_list_of_points)
 
@@ -1072,20 +1095,14 @@ class Bar(Anchorable, BarMateFix):
         return parent_tree
 
 
-# base_points = RotationResolution(rotations=40, step_size=0.0005, balanced_around_zero=True)
-# base_points = RotationResolution(rotations=39.5, step_size=0.0005)
-# base_points = RotationResolution(rotations=60, step_size=math.tau/4, balanced_around_zero=True)
-# base_points = RotationResolution(rotations=60, step_size=math.tau / 4)
-foundation_point_array = ListOfPoints(num_of_rotations=50, step_size=0.005)
+
+# foundation_point_array = ListOfPoints(num_of_rotations=50.5, step_size=math.tau/7, balanced_around_zero=True)
+foundation_point_array = ListOfPoints(num_of_rotations=50.5, num_of_points_per_rotation=3)
 h = 100
 w = 45
-
 c1_size = (h + w) / 2
 # c2_size = (h-w)/2
 c2_size = 40
-
-# print(f'c1_size: {c1_size}')
-# print(f'c2_size: {c2_size}')
 
 a1 = Anchor(0 + 0j)
 s1 = Spiral(a1, 0, 1, "archimedean", [0.3])
