@@ -10,6 +10,8 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
+import sys
+
 
 class IntersectionError(Exception):
     pass
@@ -20,6 +22,14 @@ class SpiralTypeError(Exception):
 
 
 class ListOfPointsParameterError(Exception):
+    pass
+
+
+class SpiralParametersError(Exception):
+    pass
+
+
+class PointArrayEmpty(Exception):
     pass
 
 
@@ -65,6 +75,8 @@ color_hex = [
     '#118ab2', '#f4acb7', '#8338ec', '#9a031e', '#fb5607', '#22223b',
     '#3a0ca3', '#3a0ca3'
 ]
+#! TEMP
+np.set_printoptions(threshold=sys.maxsize)
 
 
 def remove_duplicates_from_list(my_list):
@@ -116,80 +128,49 @@ class ListOfPoints:
     """
 
     num_of_points_max = 0
-    lowest_common_multiple_num_of_cycles = 1
+    lowest_common_multiple_of_num_of_cycles = 1
+    final_number_of_points = 0
 
-    def __init__(self,
-                 steps_per_cycle: int = 720,
-                #  total_num_of_points: int = None,
-                #  num_of_rotations: float = 50,
-                #  num_of_points_per_rotation: int = None,
-                 cycle_start: float = 0,
-                 cycle_end: float = 1,
-                 num_of_cycles: int = 1,
-                 balanced_around_zero: bool = False):
+    def __init__(
+            self,
+            steps_per_cycle: int = 720,
+            #  total_num_of_points: int = None,
+            #  num_of_rotations: float = 50,
+            #  num_of_points_per_rotation: int = None,
+            cycle_start: float = 0,
+            cycle_end: float = 1,
+            num_of_cycles: int = 1):
 
         self.point_array: Union[np.ndarray, None] = None
 
-        self.num_of_cycles = num_of_cycles
-        self.cycle_start = cycle_start
-        self.cycle_stop = cycle_end
+        if not isinstance(steps_per_cycle, int):
+            raise ListOfPointsParameterError('steps_per_cycle is not an INT')
+        if not isinstance(num_of_cycles, int):
+            raise ListOfPointsParameterError('num_of_cycles is not an INT')
 
-        self.total_cycles: float = self.cycle_end - self.cycle_start
+        self.num_of_cycles: int = num_of_cycles
+        self.cycle_start: float = cycle_start
+        self.cycle_end: float = cycle_end
 
-        if self.total_cycles <= 0:
-            raise ListOfPointsParameterError('cycle_end - cycle_start resulted in zero or a negative number')
+        self.total_cycles: float = np.abs(self.cycle_end - self.cycle_start)
 
-        self.num_of_steps: int = self.get_num_of_points(self.total_cycles, steps_per_cycle, self.num_of_cycles)
+        if self.total_cycles == 0:
+            raise ListOfPointsParameterError(
+                'cycle_end - cycle_start resulted in zero')
 
-        ListOfPoints.num_of_points_max=max(ListOfPoints.num_of_points_max, self.num_of_steps)
-        ListOfPoints.lowest_common_multiple=np.lcm(ListOfPoints.lowest_common_multiple, self.num_of_cycles)
+        self.initial_num_of_points: int = self.get_num_of_points(
+            self.total_cycles, steps_per_cycle, self.num_of_cycles)
 
-        # if balanced_around_zero:
-        #     # ensure num_of_steps is even
-        #     # num_of_steps = num_of_steps + (num_of_steps % 2)
-        #     half_num_of_points = num_of_steps / 2
-        #     self.point_array = np.arange(
-        #         -half_num_of_points, half_num_of_points + 1) * step_size
-        # else:
-        #     self.point_array = np.arange(0, num_of_steps + 1) * step_size
+        ListOfPoints.num_of_points_max = max(ListOfPoints.num_of_points_max,
+                                             self.initial_num_of_points)
 
-        # elif step_size is not None and total_num_of_points is not None:
-        #     if balanced_around_zero:
-        #         half_num_of_points = total_num_of_points + \
-        #             (total_num_of_points % 2)
-        #         self.point_array = np.arange(
-        #             -half_num_of_points, half_num_of_points + 1) * step_size
-        #     else:
-        #         self.point_array = np.arange(
-        #             0, total_num_of_points + 1) * step_size
-
-        # elif num_of_rotations is not None and num_of_points_per_rotation is not None:
-        #     num_of_points = num_of_rotations * num_of_points_per_rotation
-        #     if balanced_around_zero:
-        #         half_num_of_radians = num_of_rotations_in_radians / 2
-        #         self.point_array = np.linspace(-half_num_of_radians,
-        #                                        half_num_of_radians,
-        #                                        num_of_points)
-        #     else:
-        #         # add 1 to account for starting at 0
-        #         self.point_array = np.linspace(0, num_of_rotations_in_radians,
-        #                                        num_of_points + 1)
-
-        # elif num_of_rotations is not None and total_num_of_points is not None:
-        #     if balanced_around_zero:
-        #         half_num_of_radians = num_of_rotations_in_radians / 2
-        #         self.point_array = np.linspace(-half_num_of_radians,
-        #                                        half_num_of_radians,
-        #                                        total_num_of_points)
-        #     else:
-        #         # add 1 to account for starting at 0
-        #         self.point_array = np.linspace(0, num_of_rotations_in_radians,
-        #                                        total_num_of_points + 1)
-        # else:
-        #     raise ListOfPointsParameterError
+        ListOfPoints.lowest_common_multiple_of_num_of_cycles = np.lcm(
+            ListOfPoints.lowest_common_multiple_of_num_of_cycles,
+            self.num_of_cycles)
 
     @staticmethod
-    def get_num_of_points(total_cycles, steps_per_cycle, num_of_cycles) -> int:
+    def get_num_of_points(total_cycles: float, steps_per_cycle: int,
+                          num_of_cycles: int) -> int:
         # cycles = TAU * total_cycles
         # step_size = TAU/step_size
         # typically for #ofPoints you wants total / step size
@@ -198,16 +179,36 @@ class ListOfPoints:
         # 0, t/5, 2t/5, 3t/5, 4t/5, 5t/5 <--- 6 points with 1 cycles 5 step size
         # 2 cycles from 0-1 (0-1-0), 5 step size
         # 0, t/5, 2t/5, 3t/5, 4t/5, 5t/5, 4t/5, 3t/5, 2t/5, t/5, 0 = 11 points = (2 cycles * total_cycles * step size) + 1
+        # +1 added in calc common num of points
         return math.ceil(total_cycles * steps_per_cycle * num_of_cycles)
-        
-ListOfPoints.get_num_of_points()
+
+    @staticmethod
+    def calculate_common_num_of_points():
+        points_mod_lcm = ListOfPoints.num_of_points_max % ListOfPoints.lowest_common_multiple_of_num_of_cycles
+        lcm_minus_points_mod_lcm = 0
+
+        # no need to add anything to num of points if points mod lcm is 0
+        if not points_mod_lcm == 0:
+            lcm_minus_points_mod_lcm = ListOfPoints.lowest_common_multiple_of_num_of_cycles - points_mod_lcm
+        # see def get_num_of_points why +1 is added to final_number_of_points
+        ListOfPoints.final_number_of_points = ListOfPoints.num_of_points_max + lcm_minus_points_mod_lcm + 1
+        # return ListOfPoints.final_number_of_points
+
+    #TODO incorporate # of cycles
+    def calculcate_points_array(self) -> None:
+        print(f'self.cycle_end:{self.cycle_end}')
+        self.point_array = np.linspace(self.cycle_start * math.tau,
+                                       self.cycle_end * math.tau,
+                                       ListOfPoints.final_number_of_points)
+
 
 class Anchorable:
     def __init__(self):
         self.point_array: Union[np.ndarray, None] = None
         # self.list_calculated = False
 
-    def create_point_lists(self, foundation_list_of_points: ListOfPoints) -> None:
+    def create_point_lists(self,
+                           foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
     def update_drawing_objects(self, frame) -> None:
@@ -366,15 +367,20 @@ class Anchorable:
         for obj in obj_needed_for_drawing:
             artist_list.extend(obj.get_main_drawing_objects())
 
+        fig_static = plt.figure(figsize=[6, 6])
+        mngr = plt.get_current_fig_manager()
+        mngr.window.wm_geometry("+700+100")
+
         # add figure and subplots to makes axes
         fig = plt.figure(figsize=[6, 6])
-        fig_static = plt.figure(figsize=[6, 6])
+        mngr = plt.get_current_fig_manager()
+        mngr.window.wm_geometry("+100+100")
 
-        ax = fig.add_subplot(111, frameon=False)
         ax_static = fig_static.add_subplot(111, frameon=False)
+        ax = fig.add_subplot(111, frameon=False)
 
-        fig.tight_layout()
         fig_static.tight_layout()
+        fig.tight_layout()
 
         plt.axis('off')
 
@@ -479,7 +485,8 @@ class BarMateFix:
             self, foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
-    def get_parent_points(self, foundation_list_of_points: ListOfPoints) -> None:
+    def get_parent_points(self,
+                          foundation_list_of_points: ListOfPoints) -> None:
         raise NotImplementedError
 
 
@@ -543,9 +550,11 @@ class Circle(Anchorable, BarMateSlide):
                  starting_angle: float = math.tau,
                  deg: bool = False,
                  parent: Anchorable = Anchor(0 + 0j)):
+
+        super().__init__()
         # circle defined by C * exp( 2*pi*j * freq * resolution_ticker )
         # C = length * exp( starting_angle * j )
-        self.rotation_frequency: float = frequency
+        self.rotational_frequency: float = frequency
 
         self.radius: float = radius
 
@@ -555,7 +564,7 @@ class Circle(Anchorable, BarMateSlide):
             self.starting_angle: float = math.radians(starting_angle)
 
         # constant
-        # self.circle_constants: complex = self.radius * np.exp(self.starting_angle * 1j * self.exp_const * self.rotation_frequency)
+        # self.circle_constants: complex = self.radius * np.exp(self.starting_angle * 1j * self.exp_const * self.rotational_frequency)
 
         self.parent: Type[Anchorable] = parent
 
@@ -587,9 +596,8 @@ class Circle(Anchorable, BarMateSlide):
             # parent points + radius * exp(i * angle)
             # angle = starting angle + (rotational multiplier * base rotation)
             self.point_array = self.parent.point_array + (self.radius * np.exp(
-                1j *
-                (self.starting_angle +
-                 (self.rotation_frequency * resolution.point_array))))
+                1j * (self.starting_angle +
+                      (self.rotational_frequency * resolution.point_array))))
 
     def update_drawing_objects(self, frame) -> None:
         # MAIN
@@ -650,60 +658,193 @@ class Circle(Anchorable, BarMateSlide):
         return super().get_parent_tree()
 
     def __str__(self):
-        return f'radius: {self.radius}, freq: {self.rotation_frequency}, angle: {self.starting_angle}'
+        return f'radius: {self.radius}, freq: {self.rotational_frequency}, angle: {self.starting_angle}'
 
 
-class Spiral(Anchorable, BarMateSlide):
+class Curve(Anchorable, BarMateSlide):
     """
     archimedean:
         parameters:
             0: radius multiplier modifier (bigger the number, the larger the gap between rings)
                (a*phi)
-
     hyperbolic:
         parameters:
             0: alpha (radius modifier a/phi)
-
     fermat:
         parameters:
             0: alpha (radius modifier a * phi ^ 1/2)
-
     lituus:
         parameters:
             0: alpha (radius modifer a / phi ^ 1/2 OR a * phi ^ -1/2)
-
     logarithmic:
         parameters:
             0: alpha (radius modifer)
             1: ki (radius growth acceleration)
                 a * exp(ki * phi)
-
     poinsots-csch:
-
+        parameters
+            0:
+            1:
     poinsots-sech:
-
+        parameters:
+            0:
+            1:    
     doppler:
-
+        parameters:
+            0:
+            1:
     doppler+rotation:
-
+        parameters:
+            0:
+            1:
+    abdank-abakanowicz
+        0:
+    witch-of-agnesi:
+        0:
+        only valid from -pi/2 to pi/2
+        meh
+    alain's-curve:
+        0:
+        1:
+    anguinea:
+        0: height
+        1: width
+    besace:
+        0:
+        1:
+    bicorn:
+        0: type
+        1: size
+    bifolium:
+        0:
+        1:
+    regular-biforlium:
+        0:
+    booth:
+        0:
+        1:
+        2:
+    kiss:
+        0:
+    cassinian:
+        0:
+        1:
+    catenary: 
+        0:
+        1:
+    clairaut:
+        0:
+        1:
+    nicomedes:
+        a:
+        b:
+    cornoid:
+        a:
+    maltese:
+        a:
+    hypercissoid:
+        a:
+        b:
+        d:
+    sluze:
+        a:
+        b:
+    tightrope:
+        a:
+        b:
+    involute:
+        a:
+    devil:
+        a:
+        b:    
+    dumbbell:
+        a:
+        b:
+    line:
+        a:
+        b:
+        c:
+    durer
+        a:
+        b:
+    ellipse:
+        a:
+        b:
+    foluim
+        a:
+    parafolium
+        a:
+        b:
+    cochleoid:
+        a:
+        n:
+    caa: (constant angular accell):
+        a:
+    eight:
+        a:
+    aerofoil:
+        c:
+        r:
+    teardrop:
+        a:
+    figure8: https://mathcurve.com/courbes2d.gb/lemniscate/lemniscate.shtml
+        a:
+    elastic:
+        a:
+        k:
+    lissajous:
+        a:
+        b:
+        n:
+        phi:
+    egg:
+        a:
+        d:
+    double-egg
+        :a
+    trefoil:
+        a:
+        n:
+    heart:
+        variety:
+        a:
+    parabola:
+        p:
+    fish:
+        a:
+        k:
+    spring:
+        a
+        k
+        m
+    talbot:
+        a:
+        b:
+        c:
+    tn:
+        a
+    trifolium:
+        a
+        b
+        r
+    ceva:
+        a
+    basin:
+        a
+        b
+        n
+        phi
 
     see: https://en.wikipedia.org/wiki/Spiral
          https://en.wikipedia.org/wiki/List_of_spirals
+         https://mathcurve.com/courbes2d.gb/courbes2d.shtml
 
     """
-    spiral_type = [
-        "archimedean", "hyperbolic", "fermat", "lituus", "logarithmic",
-        "poinsots-csch", "poinsots-sech", "doppler", "doppler+rotation"
-    ]
-    exp_const = math.tau * 1j
-
     def __init__(
         self,
         parent: Type[Anchorable],
         starting_angle: float,
-        frequency: float,  # bigger number = tigher loops & faster spin
-        type: str,
-        spiral_parameters: List[float],
+        # frequency: float,
         deg: bool = False,
     ):
 
@@ -716,13 +857,7 @@ class Spiral(Anchorable, BarMateSlide):
             # convert from deg to radians for internal math
             self.starting_angle: float = math.radian(starting_angle)
 
-        self.rotation_frequency: float = frequency
-
-        if type not in self.spiral_type:
-            raise SpiralTypeError
-        self.type: str = type
-
-        self.spiral_parameters: List[float] = spiral_parameters
+        # self.rotational_frequency: float = frequency
 
         self.color = random.choice(color_hex)
         """
@@ -732,66 +867,16 @@ class Spiral(Anchorable, BarMateSlide):
             # [], [], marker='*', markevery=(1, 1), linestyle='--')
             [],
             [],
-            linestyle='--')
+            linestyle='--',
+            color=self.color)
         self.drawing_object_parent2spiral = plt.Line2D(
             # [], [], marker='x', markevery=(1, 1), linestyle='-.')
             [],
             [],
             marker='x',
             markevery=None,
-            linestyle='-.')
-
-    def create_point_lists(self, resolution: ListOfPoints) -> None:
-        if self.point_array is None:
-            self.parent.create_point_lists(resolution)
-
-        if self.type == "archimedean":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] * resolution.point_array) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "hyperbolic":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] / resolution.point_array) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "fermat":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] * np.sqrt(resolution.point_array)) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "lituus":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] / np.sqrt(resolution.point_array)) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "logarithmic":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] * np.exp(self.spiral_parameters[1] * resolution.point_array)) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "poinsots-csch":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] / np.sinh(self.spiral_parameters[1] * resolution.point_array)) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "poinsots-sech":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] / np.cosh(self.spiral_parameters[1] * resolution.point_array)) * \
-                np.exp(1j * (self.starting_angle +
-                       (self.rotation_frequency * resolution.point_array)))
-        elif self.type == "doppler":
-            self.point_array = self.parent.point_array + \
-                (self.spiral_parameters[0] * ((self.rotation_frequency * resolution.point_array) * np.cos(self.rotation_frequency * resolution.point_array) + self.spiral_parameters[1] * (
-                    self.rotation_frequency * resolution.point_array))) + 1j*(self.spiral_parameters[0] * (self.rotation_frequency * resolution.point_array) * np.sin(self.rotation_frequency * resolution.point_array))
-        elif self.type == "doppler+rotation":
-            self.point_array = self.parent.point_array + \
-                np.sqrt(
-                    np.power(self.spiral_parameters[0] * (resolution.point_array * np.cos(resolution.point_array) + (self.spiral_parameters[1] * resolution.point_array)), 2) +
-                    np.power(self.spiral_parameters[0] * resolution.point_array * np.sin(
-                        resolution.point_array), 2)
-                ) * np.exp(1j * (self.starting_angle +
-                                 (self.rotation_frequency * resolution.point_array)))
+            linestyle='-.',
+            color=self.color)
 
     def update_drawing_objects(self, frame) -> None:
         # spiral drawing obj
@@ -817,6 +902,546 @@ class Spiral(Anchorable, BarMateSlide):
 
     def get_parent_tree(self) -> List:
         return super().get_parent_tree()
+
+
+class RotatingCurve(Curve):
+    def __init__(self,
+                 parent: Type[Anchorable],
+                 starting_angle: float,
+                 frequency: float,
+                 deg: bool = False):
+        super().__init__(parent=parent, starting_angle=starting_angle, deg=deg)
+        self.rotational_frequency = frequency
+
+
+class ArchimedeanSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        radius_mod: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                         starting_angle=starting_angle,
+                         frequency=frequency,
+                         deg=deg)
+        self.a = radius_mod
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            (self.a * (self.rotational_frequency * lop.point_array)) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+
+class HyperbolicSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        radius_mod: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                         starting_angle=starting_angle,
+                         frequency=frequency,
+                         deg=deg)
+        self.a = radius_mod
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            (self.a / (self.rotational_frequency * lop.point_array)) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+
+class FermatSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        radius_mod: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                         starting_angle=starting_angle,
+                         frequency=frequency,
+                         deg=deg)
+        self.a = radius_mod
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            (self.a * np.sqrt((self.rotational_frequency * lop.point_array))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+class LituusSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        radius_mod: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                            starting_angle=starting_angle,
+                            frequency=frequency,
+                            deg=deg)
+        self.a = radius_mod
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            (self.a / np.sqrt((self.rotational_frequency * lop.point_array))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+class LogarithmicSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        radius_mod: float,
+        tangential_angle: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                            starting_angle=starting_angle,
+                            frequency=frequency,
+                            deg=deg)
+        self.a = radius_mod
+        self.k = tangential_angle
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            (self.a * np.exp(self.k * (self.rotational_frequency * lop.point_array))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+class PoinsotBoundedSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        alpha: float,
+        kappa: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                        starting_angle=starting_angle,
+                        frequency=frequency,
+                        deg=deg)
+        self.a = alpha
+        self.k = kappa
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            ((((self.a * np.cos(self.rotational_frequency * lop.point_array)) / (1/np.sinh(self.k * self.rotational_frequency * lop.point_array))) ) + \
+                1j * ((self.a * np.sin(self.rotational_frequency * lop.point_array) / (1/np.sinh(self.k * self.rotational_frequency * lop.point_array))))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+class PoinsotAsymptoteSpiral(RotatingCurve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        starting_angle: float,
+        frequency: float,
+        alpha: float,
+        kappa: float,
+        deg: bool = False,
+    ):
+        super().__init__(parent=parent,
+                        starting_angle=starting_angle,
+                        frequency=frequency,
+                        deg=deg)
+        self.a = alpha
+        self.k = kappa
+
+    def create_point_lists(self, lop: ListOfPoints) -> None:
+        self.parent.create_point_lists(lop)
+
+        self.point_array = self.parent.point_array + \
+            ((((self.a * np.cos(self.rotational_frequency * lop.point_array)) / (1/np.cosh(self.k * self.rotational_frequency * lop.point_array))) ) + \
+                1j * ((self.a * np.sin(self.rotational_frequency * lop.point_array) / (1/np.cosh(self.k * self.rotational_frequency * lop.point_array))))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+
+"""
+        elif self.type == "doppler":
+            a = self.spiral_parameters[0]
+            k = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a * ((lop.point_array * np.cos(lop.point_array)) + (k * lop.point_array) )) + \
+                1j*(a * lop.point_array * np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        # elif self.type == "doppler+rotation":
+        #     self.point_array = self.parent.point_array + \
+        #         np.sqrt(
+        #             np.power(self.spiral_parameters[0] * (lop.point_array * np.cos(lop.point_array) + (self.spiral_parameters[1] * lop.point_array)), 2) +
+        #             np.power(self.spiral_parameters[0] * lop.point_array * np.sin(lop.point_array), 2)) * \
+        #             np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "abdank-abakanowicz":
+            r = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                    ((r * np.sin(lop.point_array)) + 1j*((np.power(r,2)*(lop.point_array + (np.sin(lop.point_array) * np.cos(lop.point_array))))/2)) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            # if self.spiral_parameters[0] == "vertical":
+            #     self.point_array = self.parent.point_array + \
+            #         (self.spiral_parameters[1] * np.sin(lop.point_array)) + 1j*((np.power(self.spiral_parameters[1],2)*(lop.point_array + (np.sin(lop.point_array) * np.cos(lop.point_array))))/2)
+            # elif self.spiral_parameters[0] == "horizontal":
+            #     self.point_array = self.parent.point_array + \
+            #         1j*(self.spiral_parameters[1] * np.sin(lop.point_array)) + ((np.power(self.spiral_parameters[1],2)*(lop.point_array + (np.sin(lop.point_array) * np.cos(lop.point_array))))/2)
+        elif self.type == "witch-of-agnesi":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * np.tan(lop.point_array)) + 1j*(a * np.power(np.cos(lop.point_array),2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "anguinea":
+            a = self.spiral_parameters[0]
+            d = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((d * np.tan(lop.point_array / 2)) + 1j * ((a/2) * np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "besace":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (((a * np.cos(lop.point_array)) - (b * np.sin(lop.point_array))) + 1j * (((a * np.cos(lop.point_array)) - (b * np.sin(lop.point_array))) * -np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "bicorn":
+            if self.spiral_parameters[0] == "circle":
+                a = self.spiral_parameters[1]
+                self.point_array = self.parent.point_array + \
+                    (a * np.sin(lop.point_array)) + 1j * ((a * np.power(np.cos(lop.point_array),2))/(2 + np.cos(lop.point_array))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            if self.spiral_parameters[0] == "cardioid":
+                self.point_array = self.parent.point_array + \
+                    (((4 * np.cos(lop.point_array) * (2 - (np.sin(lop.point_array) *  np.power(np.cos(lop.point_array),2))))/(2 + np.sin(lop.point_array) + (2 * np.power(np.cos(lop.point_array),2)))) + \
+                        1j * ((4 *(1 + np.power(np.cos(lop.point_array),2) + np.power(np.cos(lop.point_array),4)))/(2 + np.sin(lop.point_array) + (2 * np.power(np.cos(lop.point_array),2))))) * \
+                        np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "bifolium":  # https://mathcurve.com/courbes2d.gb/bifoliumregulier/bifoliumregulier.shtml
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (((a + (b * lop.point_array))/(np.power(1 + np.power(lop.point_array,2),2))) + 1j * (((a + (b * lop.point_array))/(np.power(1 + np.power(lop.point_array,2),2))) * lop.point_array)) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "regular-biforlium":
+            a = self.spiral_parameters[0]
+            # n = self.spiral_parameters[1]
+            # self.point_array = self.parent.point_array + \
+            #     ((a * np.power((n * lop.point_array), 2))/np.sin(lop.point_array)) * \
+            #     np.exp(1j * (self.starting_angle +
+            #            (self.rotational_frequency * lop.point_array)))
+            self.point_array = self.parent.point_array + \
+                ((a * np.sin(lop.point_array) * (1 + np.cos(lop.point_array))) + 1j * (a * np.power(np.sin(lop.point_array),2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "booth":
+            variety = self.spiral_parameters[0]
+            a = self.spiral_parameters[1]
+            b = self.spiral_parameters[2]
+            if variety == "oval":
+                self.point_array = self.parent.point_array + \
+                    (((a * b * b * np.cos(lop.point_array))/((b*b*np.power(np.cos(lop.point_array),2)) + (a*a*np.power(np.sin(lop.point_array),2)))) + \
+                    1j * ((a*a*b*np.sin(lop.point_array)) / ((b*b*np.power(np.cos(lop.point_array),2)) + (a*a*np.power(np.sin(lop.point_array),2))))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            elif variety == "lemniscate":
+                self.point_array = self.parent.point_array + \
+                    (((b * np.sin(lop.point_array)) / (1 + ((a*a)/(b*b) * np.power(np.cos(lop.point_array),2)))) + \
+                    1j *((a * np.sin(lop.point_array) * np.cos(lop.point_array)) / (1 + ((a*a)/(b*b) * np.power(np.cos(lop.point_array),2))))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "kiss":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array)) + 1j*(a * np.power(np.sin(lop.point_array),3))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "cassinian":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            n = self.spiral_parameters[2]
+            e = b / a
+            # self.point_array = self.parent.point_array + \
+            #     (a * np.sqrt(np.cos(2*lop.point_array) +np.sqrt(np.power(e,4) - np.power(np.sin(lop.point_array * 2),2)) )) * np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            self.point_array = self.parent.point_array + \
+                (a * np.sqrt(np.cos(n*lop.point_array) +np.sqrt(np.power(e,2*n) - np.power(np.sin(lop.point_array * n),2)) )) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "catenary":
+            a = self.spiral_parameters[0]
+            k = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+            ((a * (lop.point_array + (k * np.sinh(lop.point_array)))) + 1j * (a * ((np.cosh(lop.point_array))+((k/2) * np.power(np.sinh(lop.point_array),2))))) * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            # ((a * np.log(lop.point_array)) + 1j * ((a/2) * (lop.point_array + (1/lop.point_array)))) * np.exp(1j * self.starting_angle)
+        elif self.type == "clairaut":
+            a = self.spiral_parameters[0]
+            n = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (a * np.power(np.sin(lop.point_array),n)) * np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "nicomedes":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a / np.cos(lop.point_array)) + b) * np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "cornoid":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array) * np.cos(2*lop.point_array)) + 1j * (a * np.sin(lop.point_array) * (2 + np.cos(2*lop.point_array)))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "maltese":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ( ((a * np.cos(lop.point_array)) * (np.power(np.cos(lop.point_array),2) - 2) ) + 1j*(a * np.sin(lop.point_array) * np.power(np.cos(lop.point_array),2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "hypercissoid":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            d = self.spiral_parameters[2]
+            self.point_array = self.parent.point_array + \
+                ( ((d * np.power(lop.point_array,2)) + (2*b*lop.point_array) + (2*a) + d ) / (1 + np.power(lop.point_array,2)) ) +\
+                1j*(lop.point_array * ( ((d * np.power(lop.point_array,2)) + (2*b*lop.point_array) + (2*a) + d ) / (1 + np.power(lop.point_array,2)) )) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "sluze":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a/np.cos(lop.point_array)) + ((b*b/a) * np.cos(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "tightrope":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((b * np.sin(lop.point_array)) + 1j*((a - (b*np.sin(lop.point_array)))*np.tan(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "involute":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * (np.cos(lop.point_array) + (lop.point_array * np.sin(lop.point_array)))) + 1j*(a * (np.sin(lop.point_array) - (lop.point_array * np.cos(lop.point_array))))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "devil":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (np.sqrt((b*b) + ((a*a)/np.cos(2*lop.point_array)))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "dumbbell":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array)) + 1j*((a*a*np.power(np.cos(lop.point_array),2)*np.sin(lop.point_array))/b)) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "line":
+            x1 = self.spiral_parameters[0]
+            x2 = self.spiral_parameters[1]
+            # y1 = self.spiral_parameters[2]
+            # y2 = self.spiral_parameters[3]
+            dx = (x2 - x1) / math.tau
+            # dy = y2 - y1
+            self.point_array = self.parent.point_array + \
+                ((x1 + (dx * lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            # ((x1 + (dx * lop.point_array)) + 1j*(y1 + (dy * lop.point_array))) * \
+        elif self.type == "durer":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((((a*np.cos(lop.point_array))/(np.cos(lop.point_array)-np.sin(lop.point_array))) + (b*np.cos(lop.point_array))) + 1j*(b*np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "ellipse":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array)) + 1j*(b*np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "foluim":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a / np.power(1+np.power(lop.point_array,2),2)) + 1j*((a / np.power(1+np.power(lop.point_array,2),2))*lop.point_array)) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "parafolium":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (((a * np.cos(2*lop.point_array)) + ((b/2)*np.sin(2*lop.point_array)))/np.power(np.cos(lop.point_array),3) ) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "cochleoid":
+            a = self.spiral_parameters[0]
+            n = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a * np.sin((n*lop.point_array)/(n-1)))/(n*np.sin(lop.point_array/(n-1)))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "caa":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a/np.sinh(lop.point_array)) + \
+                1j * ((a/2) * ((1/(np.sinh(lop.point_array) * np.cosh(lop.point_array)) - lop.point_array )))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "eight":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * np.sin(lop.point_array)) + 1j*(a * np.sin(lop.point_array) * np.cos(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "aerofoil":
+            a = self.spiral_parameters[0]
+            c = self.spiral_parameters[1]
+            d = self.spiral_parameters[2]
+            r = np.abs(c + (1j * d) - a)
+            z0 = c + (1j * d) + (r * np.exp(1j * lop.point_array))
+            self.point_array = self.parent.point_array + \
+                ((1/2) * (z0 + (np.power(a,2)/z0))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "teardrop":
+            a = self.spiral_parameters[0]
+            n = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array)) + 1j*(a * np.sin(lop.point_array) * np.power((np.sin(lop.point_array/2)),n))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "figure8":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                (((a * np.sin(lop.point_array))/(1 + np.power(np.cos(lop.point_array),2))) + 1j * ((a*np.sin(lop.point_array)*np.cos(lop.point_array))/(1 + np.power(np.cos(lop.point_array),2)))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "elastic":  # needs work
+            a = self.spiral_parameters[0]
+            k = self.spiral_parameters[1]
+            # ( (a * np.sqrt(k + np.cos(lop.point_array))) + 1j * ((a/2) * (np.cos(lop.point_array)/(k + np.cos(lop.point_array)))) ) * \
+            self.point_array = self.parent.point_array + \
+                ( (a * np.sqrt(k + np.cos(lop.point_array))) + 1j * ((2*(a * np.sqrt(k + np.cos(lop.point_array))))/np.power(a,2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "lissajous":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            n = self.spiral_parameters[2]
+            phi = self.spiral_parameters[3]
+            self.point_array = self.parent.point_array + \
+                ((a * np.sin(lop.point_array)) + 1j*(b * np.sin((n*lop.point_array)+phi))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "egg":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            d = self.spiral_parameters[2]
+            self.point_array = self.parent.point_array + \
+                (((np.sqrt((a*a) - (d*d*np.power(np.sin(lop.point_array),2)))+(d*np.cos(lop.point_array)))*np.cos(lop.point_array)) + \
+                1j*(b * np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "double-egg":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                (a * np.power(np.cos(lop.point_array),2)) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "trefoil":
+            a = self.spiral_parameters[0]
+            n = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                (a * (1 + np.cos(n*lop.point_array) + np.power(np.sin(n*lop.point_array),2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "heart":
+            variety = self.spiral_parameters[0]
+            a = self.spiral_parameters[1]
+            if variety == "laporte":
+                self.point_array = self.parent.point_array + \
+                    ((a*(np.power(np.sin(lop.point_array),3))) + 1j*(a*(np.cos(lop.point_array) - np.power(np.cos(lop.point_array),4)))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            elif variety == "boddorf":  #meh
+                self.point_array = self.parent.point_array + \
+                    (np.power(np.abs(np.tan(lop.point_array)),(1/np.sin(lop.point_array)))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            elif variety == "boss":
+                self.point_array = self.parent.point_array + \
+                    ((a*np.cos(lop.point_array)) + 1j*(a*(np.sin(lop.point_array) + np.sqrt(np.abs(np.cos(lop.point_array)))))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+            elif variety == "daniel":  #meh
+                self.point_array = self.parent.point_array + \
+                    ((np.sqrt(np.power(np.cos(2*lop.point_array),3) / np.power(np.cos(lop.point_array),2))) + \
+                    1j*((2*np.sin(2*lop.point_array)) - np.power(np.tan(lop.point_array),2))) * \
+                    np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "parabola":
+            p = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                (((p*np.power(1/np.sin(lop.point_array),2))/2) + 1j * (p*1/np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "fish":
+            a = self.spiral_parameters[0]
+            k = self.spiral_parameters[1]
+            self.point_array = self.parent.point_array + \
+                ((a*(np.cos(lop.point_array) + 2*k*np.cos(lop.point_array/2))) + 1j*(a*np.sin(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "spring":
+            a = self.spiral_parameters[0]
+            k = self.spiral_parameters[1]
+            m = self.spiral_parameters[2]
+            self.point_array = self.parent.point_array + \
+                (a / (1 + (k * np.exp(m * lop.point_array)))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "talbot":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            c = self.spiral_parameters[2]
+            self.point_array = self.parent.point_array + \
+                ((a*np.cos(lop.point_array) * (1 + (np.power(c,2) * np.power(np.sin(lop.point_array),2) / np.power(a,2)))) + \
+                1j*(b * np.sin(lop.point_array) * (1 - (np.power(c,2) * np.power(np.cos(lop.point_array),2) / np.power(b,2))))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "tn":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a * (np.power(np.cos(lop.point_array),2) + np.log(np.sin(lop.point_array)))) + \
+                1j*(a * np.sin(lop.point_array) * np.cos(lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "trifolium":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            r = self.spiral_parameters[2]
+            self.point_array = self.parent.point_array + \
+                ( (4 * r * np.power(np.cos(lop.point_array),3)) + ((a - (3*r))*np.cos(lop.point_array)) + (b * np.sin(lop.point_array)) ) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "ceva":
+            a = self.spiral_parameters[0]
+            self.point_array = self.parent.point_array + \
+                ((a *(np.cos(3*lop.point_array) + (2*np.cos(lop.point_array)))) + 1j*(a * np.sin(3 * lop.point_array))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        elif self.type == "basin":
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            n = self.spiral_parameters[2]
+            phi = self.spiral_parameters[3]
+            self.point_array = self.parent.point_array + \
+                ((a * np.cos(lop.point_array + phi) * np.cos(n*lop.point_array)) +\
+                1j*(b * np.power(np.cos(n * lop.point_array),2))) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+        
+        elif self.type == "hypercissoid":
+        self.point_array = self.parent.point_array + \
+            () + 1j*() * \
+            np.exp(1j * (self.starting_angle + (self.rotational_frequency * lop.point_array)))
+
+        elif self.type == "alain's-curve":
+            if self.spiral_parameters[0] > self.spiral_parameters[1]:
+                raise SpiralParametersError("Parameter-0 cannot be larger than parameter-1")
+            elif self.spiral_parameters[0] < 0:
+                raise SpiralParametersError("Parameter-0 cannot be less than 0")
+            a = self.spiral_parameters[0]
+            b = self.spiral_parameters[1]
+            a2 = np.power(a,2)
+            b2 = np.power(b,2)
+            c = np.sqrt((a2 + b2)/2)
+            k = (b2 - a2)/(a2 + b2)
+            self.point_array = self.parent.point_array + \
+                ((c * np.sqrt(np.cos(list_of_points.point_array * 2) - k)) / np.cos(list_of_points.point_array * 2)) * \
+                np.exp(1j * (self.starting_angle + (self.rotational_frequency * list_of_points.point_array)))
+
+
+"""
 
 
 class Bar(Anchorable, BarMateFix):
@@ -868,16 +1493,19 @@ class Bar(Anchorable, BarMateFix):
                                              marker='x',
                                              markevery=(1, 1))
 
-    def get_parent_points(self, foundation_list_of_points: ListOfPoints) -> None:
+    def get_parent_points(self,
+                          foundation_list_of_points: ListOfPoints) -> None:
         self.parent.create_point_lists(foundation_list_of_points)
 
-    def create_point_lists(self, foundation_list_of_points: ListOfPoints) -> None:
+    def create_point_lists(self,
+                           foundation_list_of_points: ListOfPoints) -> None:
         if self.point_array is None:
             self.get_parent_points(foundation_list_of_points)
 
             #  mate is a Mate Fix (such as a bar)
             if isinstance(self.mate, BarMateFix):
-                self.get_circle_intersection_with_mate(foundation_list_of_points)
+                self.get_circle_intersection_with_mate(
+                    foundation_list_of_points)
             # mate is Mate Slide (such as a Circle)
             elif isinstance(self.mate, BarMateSlide):
                 self.mate.create_point_lists(foundation_list_of_points)
@@ -1095,38 +1723,97 @@ class Bar(Anchorable, BarMateFix):
         return parent_tree
 
 
-
 # foundation_point_array = ListOfPoints(num_of_rotations=50.5, step_size=math.tau/7, balanced_around_zero=True)
-foundation_point_array = ListOfPoints(num_of_rotations=50.5, num_of_points_per_rotation=3)
+# foundation_point_array = ListOfPoints(num_of_rotations=50.5, num_of_points_per_rotation=3)
+
 h = 100
 w = 45
 c1_size = (h + w) / 2
 # c2_size = (h-w)/2
 c2_size = 40
 
-a1 = Anchor(0 + 0j)
-s1 = Spiral(a1, 0, 1, "archimedean", [0.3])
-# s1 = Spiral(a1, 0, 0.3, "hyperbolic", [10000])
-# s1 = Spiral(a1, 0, 0.1, "fermat", [1])
-# s1 = Spiral(a1, 0, 0.1, "lituus", [100])
-# s1 = Spiral(a1, 0, 0.1, "logarithmic", [10, 0.05])
-# s1 = Spiral(a1, 0, 0.1, "poinsots-csch", [1, 0.0001])
-# s1 = Spiral(a1, 0, 0.1, "poinsots-sech", [10, 0.04])
-# s1 = Spiral(a1, 0, 1, "doppler", [1, 0.6])
-# s1 = Spiral(a1, 0, 1.04, "doppler+rotation", [1, 0.7])
-c1 = Circle(c1_size, 1, starting_angle=np.pi / 4, parent=s1)
+# c1 = Circle(c1_size, 1, starting_angle=np.pi / 4, parent=s1)
 # c2 = Circle (c2_size, -1, parent=c1)
-c2 = Circle(c2_size, -2, parent=c1)
-c3 = Circle(c1_size, 3, starting_angle=np.pi, parent=c2)
-c4 = Circle(c2_size, -2, parent=c3)
+# c2 = Circle(c2_size, -2, parent=c1)
+# c3 = Circle(c1_size, 3, starting_angle=np.pi, parent=c2)
+# c4 = Circle(c2_size, -2, parent=c3)
 # a1 = Anchor(50+50j)
 # b1 = Bar(c4, 70, a1)
 # c5 = Circle10, 10, parent=c4)
+a1 = Anchor(0 + 0j)
+# s1 = Curve(a1, 0, 1, "archimedean", [0.1])
+# s1 = Curve(a1, 0, 0.3, "hyperbolic", [10000])
+# s1 = Curve(a1, 0, 0.1, "fermat", [1])
+# s1 = Curve(a1, 0, 0.1, "lituus", [100])
+# s1 = Curve(a1, 0, 0.1, "logarithmic", [10, 0.05])
+# s1 = Curve(a1, 0, 0.1, "poinsots-csch", [1, 0.0001])
+# s1 = Curve(a1, 0, 0.1, "poinsots-sech", [10, 0.04])
+# s1 = Curve(a1, 0, 0.97, "doppler", [1.2, 0.3])
+# s1 = Curve(a1, 0, 0, "doppler+rotation", [1, 0.7])
+# s1 = Curve(a1, math.tau/8, 1, "abdank-abakanowicz", [1])
+# s1 = Curve(a1, 0, 1, "witch-of-agnesi", [100])
+# s1 = Curve(a1, 0, 1, "alain's-curve", [26,30])
+# s1 = Curve(a1, 0, 1, "anguinea", [100,100])
+# s1 = Curve(a1, 0, 1, "besace", [0.1,10])
+# s1 = Curve(a1, math.tau/2, 1, "bicorn", ["cardioid",100])
+# s1 = Curve(a1, 0, 1, "bifolium", [100,10])
+# s1 = Curve(a1, 0, 1, "regular-biforlium", [1])
+# s1 = Curve(a1, math.tau/4, 1, "booth", ["oval", 10, 5])
+# s1 = Curve(a1, math.tau/8, 1, "booth", ["lemniscate", 5, 10])
+# s1 = Curve(a1, math.tau/8, 0, "kiss", [20])
+# s1 = Curve(a1, 0, 1.6, "cassinian", [20,21,4])
+# s1 = Curve(a1, 0, 1, "catenary", [100,1])
+# s1 = Curve(a1, 0, 1, "clairaut", [10,-2])
+# s1 = Curve(a1, 0, 1, "nicomedes", [1,50])
+# s1 = Curve(a1, 0, 1.8, "cornoid", [100])
+# s1 = Curve(a1, 0, 0, "maltese", [100])
+# s1 = Curve(a1, 0, 0, "hypercissoid", [80,500,80])
+# s1 = Curve(a1, math.tau/4, 1, "sluze", [10,80])
+# s1 = Curve(a1, 0, 0, "tightrope", [50, 20])
+# s1 = Curve(a1, 0, 0, "involute", [10])
+# s1 = Curve(a1, 0, 1, "devil", [30, 80])
+# s1 = Curve(a1, 0, 0, "dumbbell", [80, 30])
+# s1 = Curve(a1, math.tau/4, 0, "line", [-100, 100])
+# s1 = Curve(a1, 0, 0, "durer", [100, 100])
+# s1 = Curve(a1, math.tau/8, 0.05, "ellipse", [100, 20])
+# s1 = Curve(a1, 0, 0, "foluim", [300])
+# s1 = Curve(a1, 0, 1, "parafolium", [300,200])
+# s1 = Curve(a1, 0, 1, "cochleoid", [500,5])
+# s1 = Curve(a1, 0, 1, "caa", [50])
+# s1 = Curve(a1, 0, 1.1, "eight", [50])
+# s1 = Curve(a1, 0, 1.1, "aerofoil", [-20, 5, -10])
+# s1 = Curve(a1, 0, 0, "teardrop", [50, 8])
+# s1 = Curve(a1, 0, 0, "figure8", [50])
+# s1 = Curve(a1, 0, 0, "elastic", [5, 2]) #fail
+# s1 = Curve(a1, 0, 1.1, "lissajous", [30, 30, 6, 0])
+# s1 = Curve(a1, 0, 1.1, "egg", [30, 30, 10])
+# s1 = Curve(a1, 0, 1.1, "double-egg", [30])
+# s1 = Curve(a1, 0, 1.55, "trefoil", [30, 6])
+# s1 = Curve(a1, 0, 1.13, "heart", ["boss", 30]) #cool!
+# s1 = Curve(a1, 0, 1, "parabola", [30])
+# s1 = Curve(a1, 0, 0, "fish", [30,2])
+# s1 = Curve(a1, 0, 1, "spring", [30,20, 0.1])
+# b = 50
+# a = b*np.sqrt(2)+30
+# c = np.sqrt(a*a - b*b)
+# s1 = Curve(a1, 0,0.1, "talbot", [a, b, c])
+# s1 = Curve(a1, 0, 0, "tn", [4])
+# s1 = Curve(a1, 0, 0, "ceva", [50])
+# s1 = Curve(a1, 0, 1.5, "basin", [30,30,8,np.pi/4])
+# s1 = Curve(a1, 0, 1.5, "basin", [30,30,8,np.pi/4])
+# s1 = ArchimedeanSpiral(a1, 0, 10, 50)
+# s1 = PoinsotAsymptoteSpiral(a1, 0, 1, 10, 1)
+
+foundation_point_array = ListOfPoints(steps_per_cycle=1440, cycle_start=-1, cycle_end=1, num_of_cycles=1)
+foundation_point_array.calculate_common_num_of_points()
+foundation_point_array.calculcate_points_array()
+# print (foundation_point_array.point_array)
+s1.animate(foundation_point_array, speed=10)
 
 # b1.animate(base_points, speed=10)
 # s1.export_gcode(base_points, point_array_starting_offset=0, decimal_precision=1, file_name="spirangle", canvas_xlimit=205, canvas_ylimit=270)
 # s1.animate(base_points, speed=100, point_array_starting_offset=1000)
-s1.animate(foundation_point_array, speed=1)
+# print(foundation_point_array.point_array)
 
 # TODO
 # ? is there a better way to chain elements together?
@@ -1143,3 +1830,43 @@ s1.animate(foundation_point_array, speed=1)
 # ?   how can you start a spiral not from phi = 0 but still sync with the other items?
 # ? curve fitting to turn discrete points into G02 G03 arcs
 # ?   group discrete lumps of points by constant increasing or decreating of x or y
+# ? anamorphosis projections (https://mathcurve.com/courbes2d.gb/anamorphose/anamorphose.shtml)
+# ? asteroid https://mathcurve.com/courbes2d.gb/astroid/astroid.shtml
+# ? bar draws on a point 1/2 (or some ratio) between parent and mate
+# ? bar mate is anywhere on a line x away from parent see: https://mathcurve.com/courbes2d.gb/bernoulli/bernoulli.shtml slider-crank
+# ?     https://mathcurve.com/courbes2d.gb/bielledeberard/bielledeberard.shtml
+# ? Brocard transformation https://mathcurve.com/courbes2d.gb/brocard/brocard.shtml
+# ? https://mathcurve.com/courbes2d.gb/cardioid/cardioid.shtml
+# ? https://mathcurve.com/courbes2d.gb/caustic/caustic.htm
+# ? https://mathcurve.com/courbes2d.gb/cornu/cornu.shtml
+# ? https://mathcurve.com/courbes2d.gb/galilee/galilee.shtml
+# ? https://mathcurve.com/courbes2d.gb/gauss/gauss.shtml
+# ? https://mathcurve.com/courbes2d.gb/giration/motifs.shtml
+# ? https://mathcurve.com/courbes2d.gb/giration/rayonsinusoidal.shtml
+# ? https://mathcurve.com/courbes2d.gb/holditch/holditch.shtml
+# ? https://mathcurve.com/courbes2d.gb/inverse/inverse.shtml
+# ? https://mathcurve.com/courbes2d.gb/isochron/isochrone_paracentrique.shtml
+# ? https://mathcurve.com/courbes2d.gb/kieroide/kieroide.shtml
+# ? https://mathcurve.com/courbes2d.gb/linteaire/linteaire.shtml
+# ? https://mathcurve.com/courbes2d.gb/mascotte/mascotte.shtml
+# ? https://mathcurve.com/courbes2d.gb/nageur/nageur.shtml
+# ? more hearts: http://www.takayaiwamoto.com/draw_heart/draw_heart.html
+# ? https://mathcurve.com/courbes2d.gb/parabolesemicubic/parabolesemicubic.shtml
+# ? https://mathcurve.com/courbes2d.gb/piriforme/piriforme.shtml
+# ? https://mathcurve.com/courbes2d.gb/poursuite/poursuitemutuelle.shtml
+# ? https://mathcurve.com/courbes2d.gb/quarticbicirculairerationnelle/quarticbicirculairerationnelle.shtml
+# ? https://mathcurve.com/courbes2d.gb/ramphoid/ramphoide.shtml
+# ? https://mathcurve.com/courbes2d.gb/septic/septic.shtml
+# ? https://mathcurve.com/courbes2d.gb/sici/sici.shtml
+# ? https://mathcurve.com/courbes2d.gb/spiraletractrice/spiraletractrice.shtml
+# ? https://mathcurve.com/courbes2d.gb/sturm/spirale_sturm.shtml
+# ? https://mathcurve.com/courbes2d.gb/sturm/norwichinverse.shtml
+# ? https://mathcurve.com/courbes2d.gb/tetracuspide/tetracuspide.shtml
+# ? https://mathcurve.com/courbes2d.gb/tractrice/tractrice.shtml
+# ? https://mathcurve.com/courbes2d.gb/troisbarres/troisbarre.shtml
+# ? https://mathcurve.com/surfaces/surfaces.shtml
+# ?
+# ?
+# ?
+# ?
+# ?

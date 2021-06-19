@@ -1,0 +1,53 @@
+{
+	// Place your CyloidDrawing workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
+	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
+	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. 
+	// Placeholders with the same ids are connected.
+	// Example:
+	// "Print to console": {
+	// 	"scope": "javascript,typescript",
+	// 	"prefix": "log",
+	// 	"body": [
+	// 		"console.log('$1');",
+	// 		"$2"
+	// 	],
+	// 	"description": "Log output to console"
+	// }
+	"curve-if": {
+		"body": [ 
+			"elif self.type == \"\":", 
+			"\ta = self.spiral_parameters[0]",
+			"\tb = self.spiral_parameters[1]",
+			"\tself.point_array = self.parent.point_array + \\", 
+			"\t\t(() + 1j*()) * \\", 
+			"\t\tnp.exp(1j * (self.starting_angle + (self.rotation_frequency * lop.point_array)))" 
+		],
+		"description": "if statement for a Curve type line",
+		"prefix": ["curve"],
+	},
+	"point-array":{
+		"body": ["lop.point_array"],
+		"description": "point_array used for calc",
+		"prefix": ["lop", "pa", "ar"]
+	},
+	"rotating-curve-class":{
+		"body": ["class Spiral(RotatingCurve):",
+				 "",
+				 "\tdef __init__(self,",
+				 "\t\t\t\t parent: Type[Anchorable],",
+				 "\t\t\t\t starting_angle: float,",
+				 "\t\t\t\t frequency: float,",
+		    	 "\t\t\t\t radius_mod: float,",
+				 "\t\t\t\t deg: bool = False,):",
+				 "\t\tsuper().__init__(parent=parent, starting_angle=starting_angle, frequency=frequency, deg=deg)",
+				 "\t\tself.a = radius_mod",
+				 "",		 
+				 "\tdef create_point_lists(self, lop: ListOfPoints) -> None:",
+				 "\t\tself.parent.create_point_lists(lop)",
+				 ""],
+		"description": "Rotating Curve class template",
+		"prefix": ["rcc"]
+	}
+}
