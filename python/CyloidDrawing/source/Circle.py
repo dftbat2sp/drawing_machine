@@ -4,11 +4,12 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, List, Tuple, Type, Union, Dict
 import random
-from matplotlib import lines
-import time
+# from matplotlib import lines
+from multipledispatch import dispatch
+# import time
 
 import matplotlib.animation as animation
-import matplotlib.gridspec as gridspec
+# import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -142,6 +143,7 @@ class ListOfPoints:
     num_of_points_max = 0
     lowest_common_multiple_of_num_of_cycles = 1
     final_number_of_points = 0
+    list_of_LOP_objects: List = []
 
     def __init__(
             self,
@@ -166,9 +168,10 @@ class ListOfPoints:
 
         self.cycle_length: float = np.abs(self.cycle_end - self.cycle_start)
 
-        if self.cycle_length == 0:
-            raise ListOfPointsParameterError(
-                'cycle_end - cycle_start resulted in zero')
+        ListOfPoints.list_of_LOP_objects.append(self)
+        # if self.cycle_length == 0:
+        #     raise ListOfPointsParameterError(
+        #         'cycle_end - cycle_start resulted in zero')
 
         self.initial_num_of_points: int = self.get_num_of_points(
             self.cycle_length, steps_per_cycle, self.num_of_cycles)
@@ -179,6 +182,107 @@ class ListOfPoints:
         ListOfPoints.lowest_common_multiple_of_num_of_cycles = np.lcm(
             ListOfPoints.lowest_common_multiple_of_num_of_cycles,
             self.num_of_cycles)
+
+
+    def __getitem__(self, index):
+        return self.list[index]
+
+    @dispatch((int, float, complex))
+    def __add__(self, other):
+        return self.list + other
+
+    @dispatch(object)
+    def __add__(self, other):
+        return self.list + other.list
+
+    @dispatch((int, float, complex))
+    def __sub__(self, other):
+        return self.list - other
+
+    @dispatch(object)
+    def __sub__(self, other):
+        return self.list - other.list
+
+    @dispatch((int, float, complex))
+    def __mul__(self, other):
+        return self.list * other
+
+    @dispatch(object)
+    def __mul__(self, other):
+        return self.list * other.list
+
+    @dispatch((int, float, complex))
+    def __truediv__(self, other):
+        return self.list / other
+
+    @dispatch(object)
+    def __truediv__(self, other):
+        return self.list / other.list
+    
+    @dispatch((int, float, complex))
+    def __pow__(self, other):
+        return np.power(self.list, other)
+
+    @dispatch(object)
+    def __pow__(self, other):
+        return np.power(self.list, other.list)
+    
+    @dispatch((int, float, complex))
+    def __mod__(self, other):
+        return self.list % other
+
+    @dispatch(object)
+    def __mod__(self, other):
+        return self.list % other.list
+
+    """right side"""
+    @dispatch((int, float, complex))
+    def __radd__(self, other):
+        return other + self.list
+
+    @dispatch(object)
+    def __radd__(self, other):
+        return other.list + self.list
+
+    @dispatch((int, float, complex))
+    def __rsub__(self, other):
+        return other - self.list
+
+    @dispatch(object)
+    def __rsub__(self, other):
+        return other.list - self.list
+
+    @dispatch((int, float, complex))
+    def __rmul__(self, other):
+        return other * self.list
+
+    @dispatch(object)
+    def __rmul__(self, other):
+        return other.list * self.list
+
+    @dispatch((int, float, complex))
+    def __rtruediv__(self, other):
+        return other / self.list
+
+    @dispatch(object)
+    def __rtruediv__(self, other):
+        return other.list / self.list
+    
+    @dispatch((int, float, complex))
+    def __rpow__(self, other):
+        return np.power(other, self.list)
+
+    @dispatch(object)
+    def __rpow__(self, other):
+        return np.power(other.list, self.list)
+    
+    @dispatch((int, float, complex))
+    def __rmod__(self, other):
+        return other % self.list
+
+    @dispatch(object)
+    def __rmod__(self, other):
+        return other.list % self.list
 
     @staticmethod
     def get_num_of_points(cycle_length: float, steps_per_cycle: int,
@@ -195,6 +299,12 @@ class ListOfPoints:
         return math.ceil(cycle_length * steps_per_cycle * num_of_cycles)
 
     @staticmethod
+    def generate_points_lists():
+        ListOfPoints.calculate_common_num_of_points()
+        for lop in ListOfPoints.list_of_LOP_objects:
+            lop.calculcate_points_array()
+
+    @staticmethod
     def calculate_common_num_of_points():
         points_mod_lcm = ListOfPoints.num_of_points_max % ListOfPoints.lowest_common_multiple_of_num_of_cycles
         lcm_minus_points_mod_lcm = 0
@@ -206,7 +316,6 @@ class ListOfPoints:
         ListOfPoints.final_number_of_points = ListOfPoints.num_of_points_max + lcm_minus_points_mod_lcm
         # return ListOfPoints.final_number_of_points
 
-    #TODO incorporate # of cycles
     def calculcate_points_array(self) -> None:
 
         cycle_start_tau: float = self.cycle_start * math.tau
@@ -394,6 +503,8 @@ class Anchorable:
 
         # get our own points list
         # self.create_point_lists(resolution_obj)
+        ListOfPoints.generate_points_lists()
+
         self.create_point_lists()
 
         # get artists for drawing on mpl figure
@@ -601,7 +712,7 @@ class Circle(Anchorable):
         Drawing Objects
         """
         self.main_circle_edge_artist = plt.Circle((0, 0),
-                                                  self.radius,
+                                                  0,
                                                   fill=False,
                                                   edgecolor=self.color)
         self.main_centre2point_line_artist = plt.Line2D([], [],
@@ -614,10 +725,11 @@ class Circle(Anchorable):
         if self.points is None:
             super().create_point_lists()
             self.parent.create_point_lists()
+
             # parent points + radius * exp(i * angle)
             # angle = starting angle + (rotational multiplier * base rotation)
             self.points = self.parent.points + \
-                            (self.radius * \
+                            (self.radius.list * \
                                 np.exp(1j * (self.starting_angle + (self.base_points.list))))
             # 1j * (self.starting_angle + (self.rotational_frequency * self.base_points.list))))
 
@@ -625,10 +737,10 @@ class Circle(Anchorable):
         # MAIN
         self.main_circle_edge_artist.set_center(
             (self.parent.points[frame].real, self.parent.points[frame].imag))
+        self.main_circle_edge_artist.set_radius(self.radius.list[frame])
         self.main_centre2point_line_artist.set_data(
             [self.parent.points[frame].real, self.points[frame].real],  # x
             [self.parent.points[frame].imag, self.points[frame].imag])  # y
-
 
     def get_main_drawing_objects(self) -> List:
         return [
@@ -2640,7 +2752,7 @@ class Polygasteroid(Curve):
             np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list)))
 
 
-class Sinusoid(Curve):
+class SinusoidLine(Curve):
     def __init__(
         self,
         parent: Type[Anchorable],
@@ -2676,6 +2788,38 @@ class Sinusoid(Curve):
                 1j * (self.a * np.sin(self.base_points.list/self.b)))) * \
             np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list)))
 
+class Sinusoid(Curve):
+    def __init__(
+        self,
+        parent: Type[Anchorable],
+        size_mod: float,
+        wave_freq_mod: float = 1,
+        rotational_freq_mod: float = 0,
+        starting_angle: float = 0,
+        deg: bool = False,
+        steps_per_cycle: int = 10000,
+        cycle_start: float = 0,
+        cycle_end: float = 10,
+        num_of_cycles: int = 1,
+    ):
+        super().__init__(parent=parent,
+                         starting_angle=starting_angle,
+                         frequency=rotational_freq_mod,
+                         deg=deg,
+                         steps_per_cycle=steps_per_cycle,
+                         cycle_start=cycle_start,
+                         cycle_end=cycle_end,
+                         num_of_cycles=num_of_cycles,)
+        self.a = size_mod
+        self.b = wave_freq_mod
+
+    def create_point_lists(self) -> None:
+        super().create_point_lists()
+        self.parent.create_point_lists()
+
+        self.points = self.parent.points + \
+            ((self.a * np.sin(self.base_points.list * self.b)) * \
+            np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list))))
 
 class BalanceSpring(Curve):
     def __init__(
@@ -3160,272 +3304,7 @@ class TwoBarLinkage(Anchorable):
         return self.primary_linkage, self.secondary_linkage
 
 
-# class Bar(Anchorable):
-#     def __init__(self,
-#                  parent: Type[Anchorable],
-#                  point_length_from_parent: float,
-#                  mate_object: Type[Anchorable],
-#                  mate_length_from_parent: float = 0,
-#                  arm_length: float = 0,
-#                  arm_angle: float = -np.pi / 2,
-#                  deg: bool = False):
 
-#         super().__init__()
-#         self.parent: Type[Anchorable] = parent
-#         self.mate: Type[Anchorable] = mate_object
-#         self.point_length = point_length_from_parent
-#         self.mate_length = mate_length_from_parent
-#         self.arm_length: float = arm_length
-#         self.arm_angle: float = arm_angle
-#         self.mate_point_array = None
-#         if deg:
-#             self.arm_angle = np.radians(self.arm_angle)
-
-#         self.pre_arm_point_array: Union[np.ndarray, None] = None
-#         """ Drawing Objects """
-#         self.main_mate_line = plt.Line2D([], [],
-#                                          marker='D',
-#                                          markevery=(1, 1),
-#                                          linestyle='--')
-#         self.main_pre_arm_point_line = plt.Line2D([], [],
-#                                                   marker='x',
-#                                                   markevery=(1, 1))
-#         self.main_arm_line = plt.Line2D([], [], marker='.', markevery=(1, 1))
-#         # self.mate_intersection_circle = plt.Circle(
-#         # (0, 0), self.mate_length, fill=False)
-
-#         # self.secondary_mate_line = plt.Line2D([], [],
-#         #                                       marker='D',
-#         #                                       markevery=(1, 1),
-#         #                                       linestyle='--')
-#         # self.secondary_pre_arm_point_line = plt.Line2D([], [],
-#         #                                                marker='x',
-#         #                                                markevery=(1, 1))
-#         # self.secondary_arm_line = plt.Line2D([], [],
-#         #                                      marker='x',
-#         #                                      markevery=(1, 1))
-
-#     def get_parent_points(self,
-#                           foundation_list_of_points: ListOfPoints) -> None:
-#         self.parent.create_point_lists(foundation_list_of_points)
-
-#     def create_point_lists(self,
-#                            foundation_list_of_points: ListOfPoints) -> None:
-#         if self.points is None:
-#             self.get_parent_points(foundation_list_of_points)
-
-#             #  mate is a Mate Fix (such as a bar)
-#             if isinstance(self.mate, BarMateFix):
-#                 self.get_circle_intersection_with_mate(
-#                     foundation_list_of_points)
-#             # mate is Mate Slide (such as a Circle)
-#             elif isinstance(self.mate, BarMateSlide):
-#                 self.mate.create_point_lists(foundation_list_of_points)
-#                 self.mate_point_array = self.mate.point_array
-
-#             # test = np.angle(self.mate_point_array - self.parent.point_array) * 1j
-
-#             self.pre_arm_point_array = self.parent.points + (
-#                 self.point_length * np.exp(
-#                     np.angle(self.mate_point_array - self.parent.points) * 1j))
-
-#             self.points = self.pre_arm_point_array + (self.arm_length * np.exp(
-#                 (np.angle(self.mate_point_array - self.parent.points) +
-#                  self.arm_angle) * 1j))
-#             # self.point_length * np.exp(cmath.phase(self.mate_point_array - self.parent.point_array) * 1j))
-
-#     def get_circle_intersection_with_mate(
-#             self, foundation_list_of_points: ListOfPoints) -> None:
-#         if self.mate_point_array is None:
-#             self.mate.get_parent_points(foundation_list_of_points)
-
-#             x0 = self.parent.points.real
-#             y0 = self.parent.points.imag
-#             r0 = self.mate_length
-
-#             x1 = self.mate.parent.point_array.real
-#             y1 = self.mate.parent.point_array.imag
-#             r1 = self.mate.mate_length
-
-#             if x0[0] > x1[0]:
-#                 x0, y0, r0, x1, y1, r1 = x1, y1, r1, x0, y0, r0
-
-#             d = np.sqrt(np.power(x1 - x0, 2) + np.power(y1 - y0, 2))
-
-#             a = (np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2)) / (2 * d)
-#             h = np.sqrt(np.power(r0, 2) - np.power(a, 2))
-
-#             x2 = x0 + (a * (x1 - x0)) / d
-#             y2 = y0 + (a * (y1 - y0)) / d
-
-#             # x3 = x2 + (h * (y1 - y0)) / d
-#             # y3 = y2 - (h * (x1 - x0)) / d
-
-#             x4 = x2 - (h * (y1 - y0)) / d
-#             y4 = y2 + (h * (x1 - x0)) / d
-
-#             self.mate_point_array = x4 + (1j * y4)
-#             self.mate.mate_point_array = self.mate_point_array
-
-#             # doing the below calc in fewer varialbes to save on memory
-#             # a = (r0 ** 2 - r1 ** 2 + d ** 2) / (2 * d)
-#             # h = sqrt(r0 ** 2 - a ** 2)
-#             # x2 = x0 + a * (x1 - x0) / d
-#             # y2 = y0 + a * (y1 - y0) / d
-#             # x3 = x2 + h * (y1 - y0) / d
-#             # y3 = y2 - h * (x1 - x0) / d
-
-#         elif self.mate.mate_point_array is None:
-#             self.mate.mate_point_array = self.mate_point_array
-
-#     def update_drawing_objects(self, frame) -> None:
-#         # MAIN
-#         self.main_mate_line.set_data([
-#             self.parent.points[frame].real, self.mate_point_array[frame].real
-#         ], [self.parent.points[frame].imag, self.mate_point_array[frame].imag])
-
-#         self.main_pre_arm_point_line.set_data([
-#             self.parent.points[frame].real,
-#             self.pre_arm_point_array[frame].real
-#         ], [
-#             self.parent.points[frame].imag,
-#             self.pre_arm_point_array[frame].imag
-#         ])
-
-#         self.main_arm_line.set_data(
-#             [self.pre_arm_point_array[frame].real, self.points[frame].real],
-#             [self.pre_arm_point_array[frame].imag, self.points[frame].imag],
-#         )
-
-#         # self.mate_intersection_circle.set_center(
-#         #     (self.parent.point_array[frame].real, self.parent.point_array[frame].imag))
-
-#         # SECONDARY
-#         # self.secondary_mate_line.set_data([
-#         #     0, self.mate_point_array[frame].real -
-#         #     self.parent.point_array[frame].real
-#         # ], [
-#         #     0, self.mate_point_array[frame].imag -
-#         #     self.parent.point_array[frame].imag
-#         # ])
-#         # self.secondary_pre_arm_point_line.set_data([
-#         #     0, self.pre_arm_point_array[frame].real -
-#         #     self.parent.point_array[frame].real
-#         # ], [
-#         #     0, self.pre_arm_point_array[frame].imag -
-#         #     self.parent.point_array[frame].imag
-#         # ])
-#         # self.secondary_arm_line.set_data(
-#         #     [
-#         #         self.pre_arm_point_array[frame].real -
-#         #         self.parent.point_array[frame].real,
-#         #         self.point_array[frame].real -
-#         #         self.parent.point_array[frame].real
-#         #     ],
-#         #     [
-#         #         self.pre_arm_point_array[frame].imag -
-#         #         self.parent.point_array[frame].imag,
-#         #         self.point_array[frame].imag -
-#         #         self.parent.point_array[frame].imag
-#         #     ],
-#         # )
-
-#     def get_main_drawing_objects(self) -> List:
-#         # return [self.main_pre_arm_point_line, self.main_mate_line, self.main_arm_line, self.mate_intersection_circle]
-#         return [
-#             self.main_pre_arm_point_line, self.main_mate_line,
-#             self.main_arm_line
-#         ]
-
-#     def get_min_max_values(self,
-#                            buffer: float = 0,
-#                            point_array_only: bool = False,
-#                            point_array_starting_offset: int = 0) -> Tuple:
-
-#         real_list = [self.points[point_array_starting_offset:].real]
-#         imag_list = [self.points[point_array_starting_offset:].imag]
-#         if not point_array_only:
-#             real_list.append(
-#                 self.mate_point_array[point_array_starting_offset:].real)
-#             real_list.append(
-#                 self.parent.points[point_array_starting_offset:].real)
-#             real_list.append(
-#                 self.pre_arm_point_array[point_array_starting_offset:].real)
-
-#             imag_list.append(
-#                 self.mate_point_array[point_array_starting_offset:].imag)
-#             imag_list.append(
-#                 self.parent.points[point_array_starting_offset:].imag)
-#             imag_list.append(
-#                 self.pre_arm_point_array[point_array_starting_offset:].imag)
-
-#         x_min = min(itertools.chain.from_iterable(real_list)) - buffer
-#         x_max = max(itertools.chain.from_iterable(real_list)) + buffer
-
-#         y_min = min(itertools.chain.from_iterable(imag_list)) - buffer
-#         y_max = max(itertools.chain.from_iterable(imag_list)) + buffer
-
-#         return x_min, x_max, y_min, y_max
-
-#     def get_parent_tree(self) -> List:
-#         # get parent's tree
-#         parent_parent_tree = self.parent.get_parent_tree()
-#         # get mate's tree
-#         mate_parent_tree = self.mate.get_parent_tree()
-#         # concatencate mate and parent tree lists
-#         parent_tree = itertools.chain(parent_parent_tree, mate_parent_tree,
-#                                       [self])
-#         # parent_parent_tree.extend(mate_parent_tree)
-#         # add self to list
-#         # parent_tree.append(self)
-#         # remove duplicate objects from list
-#         parent_tree = remove_duplicates_from_list(parent_tree)
-
-#         return parent_tree
-
-#     # def get_secondary_drawing_objects(self) -> List:
-#     #     return [
-#     #         self.secondary_pre_arm_point_line, self.secondary_mate_line,
-#     #         self.secondary_arm_line
-#     #     ]
-
-#     # ? should parent be normalized or another point? MATE?
-#     # def get_min_max_values_normalized_to_origin(self,
-#     #                                             buffer: float = 0) -> Tuple:
-#     #     x_min = min(
-#     #         itertools.chain(
-#     #             self.point_array[:].real - self.parent.point_array[:].real,
-#     #             self.mate_point_array[:].real -
-#     #             self.parent.point_array[:].real,
-#     #             self.pre_arm_point_array[:].real -
-#     #             self.parent.point_array[:].real, [0])) - buffer
-#     #     x_max = max(
-#     #         itertools.chain(
-#     #             self.point_array[:].real - self.parent.point_array[:].real,
-#     #             self.mate_point_array[:].real -
-#     #             self.parent.point_array[:].real,
-#     #             self.pre_arm_point_array[:].real -
-#     #             self.parent.point_array[:].real, [0])) + buffer
-
-#     #     y_min = min(
-#     #         itertools.chain(
-#     #             self.point_array[:].imag - self.parent.point_array[:].imag,
-#     #             self.mate_point_array[:].imag -
-#     #             self.parent.point_array[:].imag,
-#     #             self.pre_arm_point_array[:].imag -
-#     #             self.parent.point_array[:].imag, [0])) - buffer
-#     #     y_max = max(
-#     #         itertools.chain(
-#     #             self.point_array[:].imag - self.parent.point_array[:].imag,
-#     #             self.mate_point_array[:].imag -
-#     #             self.parent.point_array[:].imag,
-#     #             self.pre_arm_point_array[:].imag -
-#     #             self.parent.point_array[:].imag, [0])) + buffer
-
-#     #     return x_min, x_max, y_min, y_max
-
-
-a1 = Anchor(0 + 0j)
 
 # a1 = Anchor(-350 + 70j)
 # # a2 = Anchor(150 + -200j)
@@ -3449,22 +3328,32 @@ a1 = Anchor(0 + 0j)
 #                    FreeBar(b2, 300, 100),
 #                    flip_intersection=True)
 
-def radius500():
-    return 500
 
-def radius200():
-    return 200
 
-c1 = Circle(radius500(), starting_angle=0, cycle_end=1/4, num_of_cycles=40, steps_per_cycle=100)
-c2 = Circle(radius200(), parent=c1, starting_angle=0, cycle_end=80.4)
-# s1 = ArchimedeanSpiral(c2, 0, 0, 20, cycle_end=15)
 
-s1.animate(speed=200)
+# a1 = Anchor(0 + 0j)
+# c1 = Circle(500, starting_angle=1, cycle_end=60, num_of_cycles=1, steps_per_cycle=100)
+# c2 = Circle(300, parent=c1, starting_angle=3, cycle_end=121, num_of_cycles=1)
+# c3 = Circle(200, parent=c2, starting_angle=1.3, cycle_end=180, num_of_cycles=1)
 
-# TODO
-# send in ListOfPoints to each obj rather than animate
-# send in function rather than radius for circles
-#   can this be done with all variables?
+base=2
+# freq2=66 * base
+# freq3=100 * base
+
+lop1 = ListOfPoints(3000, 300, 300, num_of_cycles=1)
+# lop2 = ListOfPoints(3000, 5, 130, num_of_cycles=10)
+# lop3 = ListOfPoints(3000, 10, 10)
+
+
+c1 = Circle(lop1,            starting_angle=0, cycle_end=base,         num_of_cycles=1, steps_per_cycle=3000)
+# c2 = Circle(lop2, parent=c1, starting_angle=2, cycle_end=freq2, num_of_cycles=1, steps_per_cycle=3000)
+# e2 = Ellipse(c1,)
+# c3 = Circle(lop3, parent=c2, starting_angle=3, cycle_end=freq3, num_of_cycles=1, steps_per_cycle=3000)
+s1 = Sinusoid(c1, size_mod=200, wave_freq_mod=10, steps_per_cycle=3000, rotational_freq_mod=1/5)
+# s1 = ArchimedeanSpiral(c2, 0, 0, 20, cycle_end=1
+
+s1.animate(speed=50)
+
 
 # print (foundation_point_array.point_array)
 # s1.animate(foundation_point_array, speed=10)
