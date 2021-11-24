@@ -125,11 +125,22 @@ color_hex = [
     "#99CC32",
 ]
 #! TEMP
-np.set_printoptions(threshold=sys.maxsize)
+np.set_printoptions(threshold=5)
 
 
 def remove_duplicates_from_list(my_list):
     return list(dict.fromkeys(my_list))
+
+
+class SinglePointList(int):
+    def __new__(cls, value):
+        return super().__new__(cls, value)
+
+    def __init__(self, value):
+        self.num = value
+
+    def __getitem__(self, index):
+        return self.num
 
 
 class ListOfPoints:
@@ -147,13 +158,14 @@ class ListOfPoints:
 
     def __init__(
             self,
-            steps_per_cycle: int = 720,
+            steps_per_cycle: int = 1000,
             #  total_num_of_points: int = None,
             #  num_of_rotations: float = 50,
             #  num_of_points_per_rotation: int = None,
             cycle_start: float = 0,
             cycle_end: float = 1,
-            num_of_cycles: int = 1):
+            num_of_cycles: int = 1,
+            treat_as_length_or_radius=False):
 
         self.list: Union[np.ndarray, None] = None
 
@@ -161,6 +173,10 @@ class ListOfPoints:
             raise ListOfPointsParameterError('steps_per_cycle is not an INT')
         if not isinstance(num_of_cycles, int):
             raise ListOfPointsParameterError('num_of_cycles is not an INT')
+        if treat_as_length_or_radius is False:
+            self.mul_by_tau = 1
+        else:
+            self.mul_by_tau = 0
 
         self.num_of_cycles: int = num_of_cycles
         self.cycle_start: float = cycle_start
@@ -182,107 +198,6 @@ class ListOfPoints:
         ListOfPoints.lowest_common_multiple_of_num_of_cycles = np.lcm(
             ListOfPoints.lowest_common_multiple_of_num_of_cycles,
             self.num_of_cycles)
-
-
-    def __getitem__(self, index):
-        return self.list[index]
-
-    @dispatch((int, float, complex))
-    def __add__(self, other):
-        return self.list + other
-
-    @dispatch(object)
-    def __add__(self, other):
-        return self.list + other.list
-
-    @dispatch((int, float, complex))
-    def __sub__(self, other):
-        return self.list - other
-
-    @dispatch(object)
-    def __sub__(self, other):
-        return self.list - other.list
-
-    @dispatch((int, float, complex))
-    def __mul__(self, other):
-        return self.list * other
-
-    @dispatch(object)
-    def __mul__(self, other):
-        return self.list * other.list
-
-    @dispatch((int, float, complex))
-    def __truediv__(self, other):
-        return self.list / other
-
-    @dispatch(object)
-    def __truediv__(self, other):
-        return self.list / other.list
-    
-    @dispatch((int, float, complex))
-    def __pow__(self, other):
-        return np.power(self.list, other)
-
-    @dispatch(object)
-    def __pow__(self, other):
-        return np.power(self.list, other.list)
-    
-    @dispatch((int, float, complex))
-    def __mod__(self, other):
-        return self.list % other
-
-    @dispatch(object)
-    def __mod__(self, other):
-        return self.list % other.list
-
-    """right side"""
-    @dispatch((int, float, complex))
-    def __radd__(self, other):
-        return other + self.list
-
-    @dispatch(object)
-    def __radd__(self, other):
-        return other.list + self.list
-
-    @dispatch((int, float, complex))
-    def __rsub__(self, other):
-        return other - self.list
-
-    @dispatch(object)
-    def __rsub__(self, other):
-        return other.list - self.list
-
-    @dispatch((int, float, complex))
-    def __rmul__(self, other):
-        return other * self.list
-
-    @dispatch(object)
-    def __rmul__(self, other):
-        return other.list * self.list
-
-    @dispatch((int, float, complex))
-    def __rtruediv__(self, other):
-        return other / self.list
-
-    @dispatch(object)
-    def __rtruediv__(self, other):
-        return other.list / self.list
-    
-    @dispatch((int, float, complex))
-    def __rpow__(self, other):
-        return np.power(other, self.list)
-
-    @dispatch(object)
-    def __rpow__(self, other):
-        return np.power(other.list, self.list)
-    
-    @dispatch((int, float, complex))
-    def __rmod__(self, other):
-        return other % self.list
-
-    @dispatch(object)
-    def __rmod__(self, other):
-        return other.list % self.list
 
     @staticmethod
     def get_num_of_points(cycle_length: float, steps_per_cycle: int,
@@ -318,14 +233,18 @@ class ListOfPoints:
 
     def calculcate_points_array(self) -> None:
 
-        cycle_start_tau: float = self.cycle_start * math.tau
-        cycle_end_tau: float = self.cycle_end * math.tau
+        cycle_start_tau: float = self.cycle_start * np.power(
+            math.tau, self.mul_by_tau)
+        cycle_end_tau: float = self.cycle_end * np.power(
+            math.tau, self.mul_by_tau)
 
         points_per_cycle: int = int(ListOfPoints.final_number_of_points /
                                     self.num_of_cycles)
 
-        print(f'points_per_cycle: {points_per_cycle}')
-        print(f'num of cycles: {self.num_of_cycles}')
+        print(
+            f'points_per_cycle: {points_per_cycle}        num of cycles: {self.num_of_cycles}'
+        )
+        # print(f'')
 
         self.list: np.ndarray = np.linspace(cycle_start_tau, cycle_end_tau,
                                             points_per_cycle + 1)
@@ -338,17 +257,134 @@ class ListOfPoints:
                                                  points_per_cycle + 1)
             # add temp point array minus the first item in the array
             # # ignore the first item because it was included in the first/previous linspace calc
+            # np.append(self.list, temp_cycle_point_array[1:])
             self.list = np.append(self.list, temp_cycle_point_array[1:])
+
             # self.point_array.append(temp_cycle_point_array[1:])
 
         # self.point_array = np.linspace(self.cycle_start * math.tau,
         #                                self.cycle_end * math.tau,
         #                                ListOfPoints.final_number_of_points)
+    # def sqrt(self):
+    #     return np.sqrt(self.list)
+
+    def sin(self):
+        return np.sin(self.list)
+
+    def cos(self):
+        return np.cos(self.list)
+
+    # def power(self, other):
+    #     return np.power(self.list, other)
+
+    def __float__(self):
+        return self.list
+
+    def __getitem__(self, index):
+        return self.list[index]
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __add__(self, other):
+        return self.list + other
+
+    @dispatch(object)
+    def __add__(self, other):
+        return self.list + other.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __sub__(self, other):
+        return self.list - other
+
+    @dispatch(object)
+    def __sub__(self, other):
+        return self.list - other.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __mul__(self, other):
+        return self.list * other
+
+    @dispatch(object)
+    def __mul__(self, other):
+        return self.list * other.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __truediv__(self, other):
+        return self.list / other
+
+    @dispatch(object)
+    def __truediv__(self, other):
+        return self.list / other.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __pow__(self, other):
+        return np.power(self.list, other)
+
+    @dispatch(object)
+    def __pow__(self, other):
+        return np.power(self.list, other.list)
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __mod__(self, other):
+        return self.list % other
+
+    @dispatch(object)
+    def __mod__(self, other):
+        return self.list % other.list
+
+    """right side"""
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __radd__(self, other):
+        return other + self.list
+
+    @dispatch(object)
+    def __radd__(self, other):
+        return other.list + self.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __rsub__(self, other):
+        return other - self.list
+
+    @dispatch(object)
+    def __rsub__(self, other):
+        return other.list - self.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __rmul__(self, other):
+        return other * self.list
+
+    @dispatch(object)
+    def __rmul__(self, other):
+        return other.list * self.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __rtruediv__(self, other):
+        return other / self.list
+
+    @dispatch(object)
+    def __rtruediv__(self, other):
+        return other.list / self.list
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __rpow__(self, other):
+        return np.power(other, self.list)
+
+    @dispatch(object)
+    def __rpow__(self, other):
+        return np.power(other.list, self.list)
+
+    @dispatch((int, float, complex, np.ndarray))
+    def __rmod__(self, other):
+        return other % self.list
+
+    @dispatch(object)
+    def __rmod__(self, other):
+        return other.list % self.list
 
 
 class Anchorable:
     def __init__(self,
-                 steps_per_cycle: int = 10000,
+                 steps_per_cycle: int = 1000,
                  cycle_start: float = 0,
                  cycle_end: float = 1,
                  num_of_cycles: int = 1):
@@ -359,8 +395,9 @@ class Anchorable:
                                         num_of_cycles=num_of_cycles)
 
     def create_point_lists(self) -> None:
-        self.base_points.calculate_common_num_of_points()
-        self.base_points.calculcate_points_array()
+        raise NotImplementedError
+        # self.base_points.calculate_common_num_of_points()
+        # self.base_points.calculcate_points_array()
 
     def update_drawing_objects(self, frame) -> None:
         raise NotImplementedError
@@ -417,15 +454,19 @@ class Anchorable:
         return parent_tree
 
     def export_gcode(self,
-                     resolution_obj: ListOfPoints,
+                    #  resolution_obj: ListOfPoints,
                      canvas_xlimit: int = 330,
                      canvas_ylimit: int = 330,
                      canvas_axes_buffer: int = 10,
                      point_array_starting_offset: int = 0,
-                     decimal_precision: int = 1,
+                     decimal_precision: int = 2,
                      file_name: str = "spiral"):
+        
+        ListOfPoints.generate_points_lists()
+        self.create_point_lists()
 
-        self.create_point_lists(resolution_obj)
+        # TODO simplify straight lines
+        # TODO create curves from line segments
 
         with open(f'C:\\Users\\mealy\\Desktop\\gcode\\{file_name}.gcode',
                   'w') as file_writer:
@@ -437,7 +478,7 @@ class Anchorable:
                     point_array_starting_offset):
                 # x = coordinate.real
                 # y = coordinate.imag
-                if f'{coordinate:.1f}' != f'{previous_coordinate:.1f}':
+                if f'{coordinate:.{decimal_precision}f}' != f'{previous_coordinate:.{decimal_precision}f}':
                     file_writer.write(
                         f'G1 F5000 X{coordinate.real:.{decimal_precision}f} Y{coordinate.imag:.{decimal_precision}f} Z0\n'
                     )
@@ -505,6 +546,9 @@ class Anchorable:
         # self.create_point_lists(resolution_obj)
         ListOfPoints.generate_points_lists()
 
+        speed = int(
+            (speed / 100) * (ListOfPoints.final_number_of_points / 1000))
+
         self.create_point_lists()
 
         # get artists for drawing on mpl figure
@@ -556,7 +600,7 @@ class Anchorable:
 
         # prevent the limits from exceeding a vallue
         # helps with + and - infinity limits
-        max_limit = 2000
+        max_limit = 5500
         xmin = max(-max_limit, xmin)
         ymin = max(-max_limit, ymin)
         xmax = min(max_limit, xmax)
@@ -573,10 +617,11 @@ class Anchorable:
         ax_static.set_ylim(bottom=self_ymin, top=self_ymax)
         ax_static.set_aspect('equal')
 
-        line, = ax.plot([], [])
+        line, = ax.plot([], [], linewidth=0.7)
 
         ax_static.plot(self.points[point_array_starting_offset:].real,
-                       self.points[point_array_starting_offset:].imag)
+                       self.points[point_array_starting_offset:].imag,
+                       linewidth=0.5)
 
         def on_q(event):
             if event.key == 'q':
@@ -626,7 +671,7 @@ class Anchorable:
 
 class Anchor(Anchorable):
     def __init__(self, complex_number: complex = 0 + 0j):
-        super().__init__()
+        super().__init__(num_of_cycles=1, steps_per_cycle=1)
         self.point = complex_number
         """
         Drawing Objects
@@ -636,8 +681,7 @@ class Anchor(Anchorable):
                                       color="#FFAA00")
 
     def create_point_lists(self):
-        super().create_point_lists()
-
+        #super().create_point_lists()
         self.points = np.full_like(self.base_points.list,
                                    self.point,
                                    dtype=complex)
@@ -649,11 +693,6 @@ class Anchor(Anchorable):
     def get_main_drawing_objects(self) -> List:
         return [
             self.main_marker,
-        ]
-
-    def get_secondary_drawing_objects(self) -> List:
-        return [
-            self.secondary_marker,
         ]
 
     def get_min_max_values(self,
@@ -679,14 +718,14 @@ class Circle(Anchorable):
 
     def __init__(
             self,
-            radius: float,
+            parent: Anchorable,
+            radius: ListOfPoints,
             #  frequency: float,
             starting_angle: float = 0,
             deg: bool = False,
-            parent: Anchorable = Anchor(0 + 0j),
-            steps_per_cycle: int = 10000,
+            steps_per_cycle: int = 1000,
             cycle_start: float = 0,
-            cycle_end: float = 10,
+            cycle_end: float = 1,
             num_of_cycles: int = 1):
 
         super().__init__(steps_per_cycle=steps_per_cycle,
@@ -720,24 +759,23 @@ class Circle(Anchorable):
                                                         markevery=(1, 1),
                                                         color=self.color)
 
-
     def create_point_lists(self) -> None:
         if self.points is None:
-            super().create_point_lists()
+            #super().create_point_lists()
             self.parent.create_point_lists()
 
             # parent points + radius * exp(i * angle)
             # angle = starting angle + (rotational multiplier * base rotation)
             self.points = self.parent.points + \
-                            (self.radius.list * \
-                                np.exp(1j * (self.starting_angle + (self.base_points.list))))
+                            (self.radius * \
+                                np.exp(1j * (self.starting_angle + (self.base_points))))
             # 1j * (self.starting_angle + (self.rotational_frequency * self.base_points.list))))
 
     def update_drawing_objects(self, frame) -> None:
         # MAIN
         self.main_circle_edge_artist.set_center(
             (self.parent.points[frame].real, self.parent.points[frame].imag))
-        self.main_circle_edge_artist.set_radius(self.radius.list[frame])
+        self.main_circle_edge_artist.set_radius(self.radius[frame])
         self.main_centre2point_line_artist.set_data(
             [self.parent.points[frame].real, self.points[frame].real],  # x
             [self.parent.points[frame].imag, self.points[frame].imag])  # y
@@ -777,17 +815,15 @@ class Circle(Anchorable):
 
 
 class Curve(Anchorable):
-    def __init__(
-        self,
-        parent: Type[Anchorable],
-        starting_angle: float = 0,
-        frequency: float = 0,
-        deg: bool = False,
-        steps_per_cycle: int = 10000,
-        cycle_start: float = 0,
-        cycle_end: float = 10,
-        num_of_cycles: int = 1
-    ):
+    def __init__(self,
+                 parent: Type[Anchorable],
+                 starting_angle: float = 0,
+                 frequency: float = 0,
+                 deg: bool = False,
+                 steps_per_cycle: int = 1000,
+                 cycle_start: float = 0,
+                 cycle_end: float = 10,
+                 num_of_cycles: int = 1):
 
         super().__init__(steps_per_cycle=steps_per_cycle,
                          cycle_start=cycle_start,
@@ -805,21 +841,20 @@ class Curve(Anchorable):
         self.freq_mod: float = frequency
 
         self.color: str = random.choice(color_hex)
-
         """Drawing Objects"""
         self.drawing_object_spiral = plt.Line2D(
             # [], [], marker='*', markevery=(1, 1), linestyle='--')
             [],
             [],
-            linestyle='--',
+            linestyle='solid',
             color=self.color)
         self.drawing_object_parent2spiral = plt.Line2D(
             # [], [], marker='x', markevery=(1, 1), linestyle='-.')
             [],
             [],
-            marker='x',
+            marker='',
             markevery=None,
-            linestyle='-.',
+            linestyle='--',
             color=self.color)
 
     def update_drawing_objects(self, frame) -> None:
@@ -854,30 +889,32 @@ class ArchimedeanSpiral(Curve):
         radius_mod: float,
         deg: bool = False,
         starting_angle: float = 0,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=frequency,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=frequency,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
             (self.a * (self.base_points.list)) * \
             np.exp(1j * (self.starting_angle + (self.base_points.list)))
-            # (self.a * (self.rotational_frequency * self.base_points.list)) * \
-            # np.exp(1j * (self.starting_angle + (self.rotational_frequency * self.base_points.list)))
+        # (self.a * (self.rotational_frequency * self.base_points.list)) * \
+        # np.exp(1j * (self.starting_angle + (self.rotational_frequency * self.base_points.list)))
 
 
 class HyperbolicSpiral(Curve):
@@ -888,23 +925,24 @@ class HyperbolicSpiral(Curve):
         radius_mod: float,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=frequency,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=frequency,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles)
         self.a = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -920,23 +958,24 @@ class FermatSpiral(Curve):
         radius_mod: float,
         deg: bool = False,
         starting_angle: float = 0,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=frequency,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=frequency,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles)
         self.a = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -952,23 +991,25 @@ class LituusSpiral(Curve):
         radius_mod: float,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=frequency,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=frequency,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -985,24 +1026,26 @@ class LogarithmicSpiral(Curve):
         # freq_mod: float = 1,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius_mod
         self.k = tangential_angle
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1019,25 +1062,26 @@ class PoinsotBoundedSpiral(Curve):
         freq_mod: float = 1,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
-        
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.k = kappa
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1047,32 +1091,32 @@ class PoinsotBoundedSpiral(Curve):
 
 
 class PoinsotAsymptoteSpiral(Curve):
-    def __init__(
-        self,
-        parent: Type[Anchorable],
-        alpha: float,
-        kappa: float,
-        freq_mod: float = 1,
-        starting_angle: float = 0,
-        deg: bool = False,
-        steps_per_cycle: int = 10000,
-        cycle_start: float = 0,
-        cycle_end: float = 10,
-        num_of_cycles: int = 1
-    ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+    def __init__(self,
+                 parent: Type[Anchorable],
+                 alpha: float,
+                 kappa: float,
+                 freq_mod: float = 1,
+                 starting_angle: float = 0,
+                 deg: bool = False,
+                 steps_per_cycle: int = 1000,
+                 cycle_start: float = 0,
+                 cycle_end: float = 10,
+                 num_of_cycles: int = 1):
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.k = kappa
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1090,24 +1134,26 @@ class DopplerSpiral(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius_mod
         self.k = doppler_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1124,23 +1170,25 @@ class AbdankAbakanowicz(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.r = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1157,23 +1205,25 @@ class WitchOfAgnesi(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1191,24 +1241,26 @@ class Anguinea(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = apex_width
         self.d = apex_height
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1226,24 +1278,26 @@ class Besace(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_mod
         self.b = y_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1260,23 +1314,25 @@ class BicornRegular(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1295,25 +1351,27 @@ class BicornCardioid(Curve):
         deg: bool = False,
         translate_x: float = 0,
         translate_y: float = 0,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.translate_x = translate_x
         self.translate_y = translate_y
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1332,24 +1390,26 @@ class Bifolium(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = loop_x_axis_intersection_point
         self.b = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1366,23 +1426,25 @@ class BifoliumRegular(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1399,24 +1461,26 @@ class Biquartic(Curve):
         starting_angle: float = 0,
         freq_mod: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1434,24 +1498,26 @@ class BoothOvals(Curve):
         starting_angle: float = 0,
         freq_mod: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1469,24 +1535,26 @@ class BoothLemniscates(Curve):
         starting_angle: float = 0,
         freq_mod: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1504,24 +1572,26 @@ class Kiss(Curve):
         starting_angle: float = 0,
         freq_mod: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1539,24 +1609,26 @@ class Clairaut(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.n = shape_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1573,24 +1645,26 @@ class ConchoidOfNicomedes(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.b = const_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1607,24 +1681,26 @@ class Cornoid(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1642,24 +1718,26 @@ class MalteseCross(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1678,25 +1756,27 @@ class RationalCircularCubic(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
         self.d = delta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1714,24 +1794,26 @@ class SluzeCubic(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1747,23 +1829,25 @@ class InvoluteCircle(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1781,24 +1865,26 @@ class DumbBell(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = height
         self.b = width
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1817,26 +1903,28 @@ class StraightLine(Curve):
         x1: float = 0,
         freq_mod: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=0,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=0,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.x1 = x1
         self.x2 = x2
         self.y1 = y1
         self.y2 = y2
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
         dx = (self.x2 - self.x1) / math.tau
         dy = (self.y2 - self.y1) / math.tau
@@ -1857,24 +1945,26 @@ class DurerShellCurve(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1889,33 +1979,37 @@ class Ellipse(Curve):
         parent: Type[Anchorable],
         height: float,
         width: float,
-        freq_mod: float = 0,
-        starting_angle: float = 0,
+        freq_mod: Union[float, np.ndarray] = 0,
+        starting_angle: Union[float, np.ndarray] = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = width
         self.b = height
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
-            ((self.a * np.cos(self.base_points.list)) + \
-                1j*(self.b*np.sin(self.base_points.list))) * \
-            np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list)))
+            ((self.a * np.cos(self.base_points)) + \
+                1j*(self.b*np.sin(self.base_points))) * \
+            np.exp(1j * (self.starting_angle + self.freq_mod))
+        # np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list)))
+        # np.exp(1j * self.starting_angle)
 
 
 class Rose(Curve):
@@ -1927,24 +2021,26 @@ class Rose(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.n = num_of_arms
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1962,25 +2058,27 @@ class Folioid(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.e = eta
         self.n = num_of_arms
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -1996,23 +2094,25 @@ class SimpleFolium(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2031,25 +2131,27 @@ class Folium(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.r = radius
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2067,24 +2169,26 @@ class Cochleoid(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.n = num_of_nodes + 2
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2100,23 +2204,25 @@ class ConstantAngularAccelerationSpiral(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2133,24 +2239,26 @@ class GalileanSpiral(Curve):  #
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = alpha
         self.b = beta
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2166,23 +2274,25 @@ class HourGlass(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2201,30 +2311,32 @@ class Aerofoil(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = a
         self.c = c
         self.d = d
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         r = np.abs(self.c + (1j * self.d) - self.a)
-        z0 = self.c + (1j * self.d) + (
-            r * np.exp(1j * (self.base_points.list)))
+        z0 = self.c + (1j * self.d) + (r * np.exp(1j *
+                                                  (self.base_points.list)))
         self.points = self.parent.points + \
             ((1/2) * (z0 + (np.power(self.a,2)/z0))) * \
             np.exp(1j * (self.starting_angle + (self.base_points.list)))
@@ -2239,24 +2351,26 @@ class Piriform(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size
         self.b = y_size
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2274,24 +2388,26 @@ class Teardrop(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.n = shape_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2308,23 +2424,25 @@ class FigureEight(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2344,26 +2462,28 @@ class Lissajous(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size
         self.b = y_size
         self.n = angle_mod
         self.phi = angle_shift
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2382,25 +2502,27 @@ class Egg(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = radius1
         self.b = radius2
         self.d = center_offset
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2417,23 +2539,25 @@ class DoubleEgg(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2450,24 +2574,26 @@ class HabenichtTrefoil(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.n = num_of_pedals
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2484,24 +2610,26 @@ class LaporteHeart(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size
         self.b = y_size
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2519,24 +2647,26 @@ class BossHeart(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size
         self.b = y_size
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2553,23 +2683,25 @@ class Propeller(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2586,24 +2718,26 @@ class TFayButterfly(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.b = flair
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2620,24 +2754,26 @@ class Parabola(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = shape_mod
         self.b = size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2655,24 +2791,26 @@ class Fish(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.k = fishiness
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2690,24 +2828,26 @@ class DoubleFish(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2726,25 +2866,27 @@ class Polygasteroid(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.e = eta
         self.n = num_of_arms
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2762,31 +2904,34 @@ class SinusoidLine(Curve):
         rotational_freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=rotational_freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=rotational_freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.c = size_mod
         self.a = height_mod
         self.b = 1 / wave_freq_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
             (self.c * ((self.base_points.list) + \
                 1j * (self.a * np.sin(self.base_points.list/self.b)))) * \
             np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list)))
+
 
 class Sinusoid(Curve):
     def __init__(
@@ -2797,29 +2942,32 @@ class Sinusoid(Curve):
         rotational_freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=rotational_freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=rotational_freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.b = wave_freq_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
             ((self.a * np.sin(self.base_points.list * self.b)) * \
             np.exp(1j * (self.starting_angle + (self.freq_mod * self.base_points.list))))
+
 
 class BalanceSpring(Curve):
     def __init__(
@@ -2831,25 +2979,27 @@ class BalanceSpring(Curve):
         # freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                        #  frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            #  frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = size_mod
         self.k = winding_constant  # smaller num = more windings
         self.m = spring_stiffness  # larger num = less windings
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2867,19 +3017,21 @@ class Talbot(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
         if c2 is None:
@@ -2889,7 +3041,7 @@ class Talbot(Curve):
         # self.c2 = c2
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2907,24 +3059,26 @@ class TNConstant(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2942,24 +3096,26 @@ class CevaTrisectrix(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -2979,26 +3135,28 @@ class Basin2D(Curve):
         freq_mod: float = 0,
         starting_angle: float = 0,
         deg: bool = False,
-        steps_per_cycle: int = 10000,
+        steps_per_cycle: int = 1000,
         cycle_start: float = 0,
         cycle_end: float = 10,
         num_of_cycles: int = 1,
     ):
-        super().__init__(parent=parent,
-                         starting_angle=starting_angle,
-                         frequency=freq_mod,
-                         deg=deg,
-                         steps_per_cycle=steps_per_cycle,
-                         cycle_start=cycle_start,
-                         cycle_end=cycle_end,
-                         num_of_cycles=num_of_cycles,)
+        super().__init__(
+            parent=parent,
+            starting_angle=starting_angle,
+            frequency=freq_mod,
+            deg=deg,
+            steps_per_cycle=steps_per_cycle,
+            cycle_start=cycle_start,
+            cycle_end=cycle_end,
+            num_of_cycles=num_of_cycles,
+        )
         self.a = x_size_mod
         self.b = y_size_mod
         self.n = num_of_pedals
         self.phi = pedal_rotation
 
     def create_point_lists(self) -> None:
-        super().create_point_lists()
+        #super().create_point_lists()
         self.parent.create_point_lists()
 
         self.points = self.parent.points + \
@@ -3025,7 +3183,7 @@ class FreeBar(Anchorable):
 
         self.link_point_array: Union[np.ndarray, None] = None
 
-        self.helper_class: Union[TwoBarLinkage, None] = None
+        self.helper_class: Union[TwoBarFixedLinkage, None] = None
 
         self.dotted_color: str = random.choice(color_hex)
         self.solid_color: str = random.choice(color_hex)
@@ -3059,13 +3217,12 @@ class FreeBar(Anchorable):
         else:
             self.helper_class.update_drawing_objects(frame)
 
-    def create_point_lists(self,
-                           foundation_list_of_points: ListOfPoints) -> None:
+    def create_point_lists(self) -> None:
         if self.helper_class is None:
             raise FreeBarHelperClassError(
                 "FreeBar used without helper class to initialize points array")
         else:
-            self.helper_class.create_point_lists(foundation_list_of_points)
+            self.helper_class.create_point_lists()
 
 
 class _Point2PointBar(FreeBar):
@@ -3097,11 +3254,10 @@ class _Point2PointBar(FreeBar):
             [self.link_point_array[frame].real, self.points[frame].real],
             [self.link_point_array[frame].imag, self.points[frame].imag])
 
-    def create_point_lists(self,
-                           foundation_list_of_points: ListOfPoints) -> None:
+    def create_point_lists(self) -> None:
         if self.points is None:
-            self.parent.create_point_lists(foundation_list_of_points)
-            self.mate.create_point_lists(foundation_list_of_points)
+            self.parent.create_point_lists()
+            self.mate.create_point_lists()
 
             self.link_point_array = self.parent.points + \
                 (self.link_point_length * np.exp(1j * np.angle(self.mate.points - self.parent.points)))
@@ -3183,7 +3339,7 @@ class Point2PointElasticBar(_Point2PointBar):
             #     (self.arm_length * np.exp(1j * (np.angle(self.mate.point_array - self.parent.point_array) + self.arm_angle)))
 
 
-class TwoBarLinkage(Anchorable):
+class TwoBarFixedLinkage(Anchorable):
     def __init__(self,
                  primary_linkage: FreeBar,
                  secondary_linkage: FreeBar,
@@ -3198,13 +3354,10 @@ class TwoBarLinkage(Anchorable):
         self.primary_linkage.helper_class = self
         self.secondary_linkage.helper_class = self
 
-    def create_point_lists(self,
-                           foundation_list_of_points: ListOfPoints) -> None:
+    def create_point_lists(self) -> None:
         if self.points is None:
-            self.primary_linkage.parent.create_point_lists(
-                foundation_list_of_points)
-            self.secondary_linkage.parent.create_point_lists(
-                foundation_list_of_points)
+            self.primary_linkage.parent.create_point_lists()
+            self.secondary_linkage.parent.create_point_lists()
 
             x0 = self.primary_linkage.parent.points.real
             y0 = self.primary_linkage.parent.points.imag
@@ -3214,13 +3367,28 @@ class TwoBarLinkage(Anchorable):
             y1 = self.secondary_linkage.parent.points.imag
             r1 = self.secondary_linkage.link_point_length
 
-            if x0[0] > x1[0]:
-                x0, y0, r0, x1, y1, r1 = x1, y1, r1, x0, y0, r0
+            # if x0[0] > x1[0]:
+                # x0, y0, r0, x1, y1, r1 = x1, y1, r1, x0, y0, r0
 
+
+            # print(f'x1-x0**2: {np.power(x1-x0,2)}')
+            # print(f'y1-y0**2: {np.power(y1-y0,2)}')
             d = np.sqrt(np.power(x1 - x0, 2) + np.power(y1 - y0, 2))
 
+            # print(f'r0: {r0}')
+            # print(f'r1: {r1}')
+            # print(f'd: {np.power(d,2)}')
+            # print(f'r1^2: {np.power(r1,2)}')
+            # print(f'd^2: {np.power(d,2)}')
+            # print(f'comb: {(np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2))}')
+            # print(f'a: {(np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2)) / (2 * d)}')
             a = (np.power(r0, 2) - np.power(r1, 2) + np.power(d, 2)) / (2 * d)
-            h = np.sqrt(np.power(r0, 2) - np.power(a, 2))
+            # h = np.sqrt(np.power(r0, 2) - np.power(a, 2))
+            # print(f'r0^2: {np.power(r0,2)}')
+            # print(f'a:  {np.power(a,2)}')
+            h = np.sqrt((r0**2) - (a**2))
+
+            # print(f'h: {h}')
 
             x2 = x0 + (a * (x1 - x0)) / d
             y2 = y0 + (a * (y1 - y0)) / d
@@ -3235,6 +3403,9 @@ class TwoBarLinkage(Anchorable):
             #! Gross, manually setting primary and secondary linkage point array feels shitty
 
             self.linkage_point_array = x4 + (1j * y4)
+            # TEMP
+            # print(f'linkage points: {self.linkage_point_array}')
+
             self.secondary_linkage.points = self.linkage_point_array + \
                 (self.secondary_linkage.arm_length * \
                 np.exp(1j * (np.angle(self.linkage_point_array - self.secondary_linkage.parent.points) + self.secondary_linkage.arm_angle)))
@@ -3304,7 +3475,61 @@ class TwoBarLinkage(Anchorable):
         return self.primary_linkage, self.secondary_linkage
 
 
+a1 = Anchor()
+main_circle_radius = ListOfPoints(1000, 800, 800, treat_as_length_or_radius=True)
+main_circle_radius = SinglePointList(900)
+base = 1
+mc1 = Circle(
+    a1,
+    main_circle_radius,
+    starting_angle=0,
+    cycle_end=base,
+    # steps_per_cycle=10
+)
+mc2 = Circle(
+    a1,
+    main_circle_radius,
+    starting_angle=math.tau/12,
+    cycle_end=base,
+    # steps_per_cycle=10
+)
+sc2_ce = -base*90
+sc1_ce = base*139
 
+sc1 = Circle(
+    mc1,
+    SinglePointList(140),
+    cycle_end=sc1_ce,
+    starting_angle=1
+    # steps_per_cycle=10
+)
+
+sc2 = Circle(
+    mc2,
+    SinglePointList(180),
+    cycle_end=sc2_ce,
+    # steps_per_cycle=10
+)
+
+tbl1 = TwoBarFixedLinkage(
+    FreeBar(sc1,450,120),
+    FreeBar(sc2,500,120),
+    flip_intersection=False
+)
+
+tbl1_fb1, tbl2_fb2 = tbl1.get_linkage_objects()
+
+tbl2 = TwoBarFixedLinkage(
+    FreeBar(tbl1_fb1, 175),
+    FreeBar(tbl2_fb2, 175),
+    flip_intersection=True
+)
+tbl2.export_gcode(point_array_starting_offset=0, decimal_precision=2, file_name="CCCFFFF-3", canvas_xlimit=205, canvas_ylimit=270)
+
+# tbl2.animate(speed=20)
+# tbl1.animate(speed=60)
+# sc1.animate(speed=60)
+# mc1.animate(speed=70)
 
 # a1 = Anchor(-350 + 70j)
 # # a2 = Anchor(150 + -200j)
@@ -3328,32 +3553,49 @@ class TwoBarLinkage(Anchorable):
 #                    FreeBar(b2, 300, 100),
 #                    flip_intersection=True)
 
-
-
-
-# a1 = Anchor(0 + 0j)
 # c1 = Circle(500, starting_angle=1, cycle_end=60, num_of_cycles=1, steps_per_cycle=100)
 # c2 = Circle(300, parent=c1, starting_angle=3, cycle_end=121, num_of_cycles=1)
 # c3 = Circle(200, parent=c2, starting_angle=1.3, cycle_end=180, num_of_cycles=1)
 
-base=2
 # freq2=66 * base
 # freq3=100 * base
 
-lop1 = ListOfPoints(3000, 300, 300, num_of_cycles=1)
-# lop2 = ListOfPoints(3000, 5, 130, num_of_cycles=10)
 # lop3 = ListOfPoints(3000, 10, 10)
 
+# a1 = Anchor(0 + 0j)
+# base=60
+# c3_rot = base*(11+0.00)
+# c4_rot = base*(2+ 0.08)
 
-c1 = Circle(lop1,            starting_angle=0, cycle_end=base,         num_of_cycles=1, steps_per_cycle=3000)
+# c1_radius = SinglePointList(600 * math.tau)
+# c1 = Circle(a1, c1_radius, cycle_end=base)
+# c2 = Circle(a1, c1_radius, math.tau*(2/3), cycle_end=base)
+
+# c3_radius = SinglePointList(150 * math.tau)
+# c3 = Circle(c1, c3_radius, cycle_end=c3_rot)
+
+# c4_rad = SinglePointList(100 * math.tau)
+# c4 = Circle(c3, c4_rad, cycle_end=c4_rot)
+
+# b1 = Point2PointSliderBar(c4,c2,1020,530, math.tau*(7/38))
+
+# b1.animate(speed=20)
+# ecycle=base*190
+# sizecycles=10
+# rot  = ListOfPoints(500, 0, 1, num_of_cycles=1)
+# lop1 = ListOfPoints(1, 150, 150, num_of_cycles=1)
+# lop2 = ListOfPoints(10, 5,   140, num_of_cycles=sizecycles)
+# lop3 = ListOfPoints(50, 25,   12, num_of_cycles=sizecycles)
+# c1 = Circle(a1, lop1,            starting_angle=-0.4, cycle_end=1,         num_of_cycles=1, steps_per_cycle=500)
+# e1 = Ellipse(c1,lop2,lop3, starting_angle=(math.tau/4)-0.4 ,cycle_end=ecycle, freq_mod=rot, steps_per_cycle=100)
+# lop3 = ListOfPoints(1000, 10,   60, num_of_cycles=16)
+# e1 = Ellipse(a1,lop2,lop3, starting_angle=math.tau/4 ,cycle_end=ecycle, freq_mod=0.01, steps_per_cycle=1000)
+# e1 = Ellipse(a1,lop2,lop3, starting_angle=math.tau/2 ,cycle_end=ecycle, steps_per_cycle=1000)
+# s1 = Sinusoid(c1, size_mod=lop2, wave_freq_mod=9, steps_per_cycle=1000, rotational_freq_mod=base/10)
 # c2 = Circle(lop2, parent=c1, starting_angle=2, cycle_end=freq2, num_of_cycles=1, steps_per_cycle=3000)
-# e2 = Ellipse(c1,)
+# e2 = Ellipse(c1,)A
 # c3 = Circle(lop3, parent=c2, starting_angle=3, cycle_end=freq3, num_of_cycles=1, steps_per_cycle=3000)
-s1 = Sinusoid(c1, size_mod=200, wave_freq_mod=10, steps_per_cycle=3000, rotational_freq_mod=1/5)
 # s1 = ArchimedeanSpiral(c2, 0, 0, 20, cycle_end=1
-
-s1.animate(speed=50)
-
 
 # print (foundation_point_array.point_array)
 # s1.animate(foundation_point_array, speed=10)
